@@ -1,0 +1,20 @@
+
+2019-02-25T11:39:12Z WARNING - [foo.1] -execution timeout after PT10S
+2019-02-25T11:39:12Z INFO - [foo.1] -poll now, (next in PT10S (after 2019-02-25T11:39:13Z))
+2019-02-25T11:39:13Z INFO - [foo.1] -poll now, (next in PT10S (after 2019-02-25T11:39:23Z))
+2019-02-25T11:39:14Z INFO - [foo.1] -(current:running)(polled) failed at 2019-02-25T11:39:14Z
+2019-02-25T11:39:14Z CRITICAL - [foo.1] -job(01) failed
+2019-02-25T11:39:14Z INFO - [foo.1] -suiciding
+2019-02-25T11:39:14Z INFO - Waiting for the command process pool to empty for shutdown
+2019-02-25T11:39:15Z INFO - [foo.1] -(current:failed)(polled) failed at 2019-02-25T11:39:15Z
+2019-02-25T11:39:15Z CRITICAL - [foo.1] -job(01) failed
+2019-02-25T11:39:15Z INFO - Suite shutting down - AUTOMATIC
+2019-02-25T11:39:15Z INFO - stopping server...
+2019-02-25T11:39:15Z INFO - ...stopped
+2019-02-25T11:39:15Z INFO - [('suite-event-handler-00', 'shutdown') cmd] cylc hook check-triggering 'shutdown' 'cylctb-20190225T113846Z/cylc-poll/16-execution-time-limit' 'AUTOMATIC'
+	[('suite-event-handler-00', 'shutdown') ret_code] 0
+	[('suite-event-handler-00', 'shutdown') out]
+	This is the cylc check-triggering shutdown event handler
+	Triggering check passed
+2019-02-25T11:39:15Z INFO - SUITE REFERENCE TEST PASSED
+2019-02-25T11:39:15Z INFO - DONE
