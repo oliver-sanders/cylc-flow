@@ -1,0 +1,10 @@
+[x] Delete GUI
+[x] Run 2to3 ammending erroneous diffs
+[ ] Remove legacy Python2 code
+[x] Replace cherrypy HTTP server with ZMQ
+  [x] Cylc suite server
+  [ ] Cylc Review server
+[ ] Replace comparison logic in cylc.cyclers / overhaul of cyclers
+[ ] argparse
+[ ] pytest prove interface
+[ ] tidy up scheduler facade to the server methods?

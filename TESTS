@@ -1,0 +1,102 @@
+LOCAL Test Results
+==================
+
+o - FAIL
+x - PASS
+
+
+
+./tests/restart/31-upgrade-db-7-6-0.t
+  Failed test:  4
+tests/cylc-poll/16-execution-time-limit.t (Wstat: 0 Tests: 4 Failed: 1)
+  Failed test:  4
+
+
+x api-suite-info
+x authentication  - remote tests
+x broadcast
+x cli
+x clock-expire
+x cyclepoint
+x cyclers
+x cylc-cat-log
+x cylc-cat-state
+x cylc-diff
+x cylc-doc
+x cylc-edit
+x cylc-get-config
+x cylc-get-cylc-version
+x cylc-get-host-metrics
+x cylc-get-site-config
+x cylc-get-suite-contact
+x cylc-graph-diff
+x cylc-insert
+x cylc-kill  - remote tests
+x cylc-list
+x cylc-message
+x cylc-ping
+x cylc-poll
+x cylc-remove
+x cylc-reset
+x cylc-scan
+x cylc-search
+x cylc-show
+x cylc-submit
+x cylc-take-checkpoints
+x cylc-trigger
+x cylc-view
+x cylc.host_appointer
+x cylc.wallclock
+x database
+x deprecations
+x directives  - remote tests
+x empy
+x env-filter
+x events
+x execution-time-limit  - remote tests
+x ext-trigger
+x graph-equivalence
+x graphing
+x hold-release
+x host-select
+x include-files
+x inheritance
+x integer-cycling
+x intercycle
+x jinja2
+x job-file-trap
+x job-kill  - remote tests
+x job-submission  - remote tests
+x jobscript
+x logging
+x message-triggers
+x modes
+x offset
+x param_expand
+x parsec
+x periodicals
+x pre-initial
+x profile-battery
+x queues
+x recurrence-min
+x registration
+x reload
+x remote  - remote tests
+x repeated-items
+x restart
+x retries
+x rnd
+x runahead
+x shutdown
+x spawn-max
+x special
+x startup
+x suite-host-self-id
+x suite-state
+x task-name
+x task-proc-loop
+x triggering
+x tutorial
+x validate
+   - empy issue - not solvable - remove EmPy from Travis-CI
+x xtriggers
