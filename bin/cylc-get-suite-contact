@@ -40,7 +40,7 @@ def main():
         sys.exit("%s: cannot get contact info, suite not running?" % (reg,))
     else:
         for key, value in sorted(data.items()):
-            print("%s=%s" % (key, value))
+            print(("%s=%s" % (key, value)))
 
 
 if __name__ == "__main__":
