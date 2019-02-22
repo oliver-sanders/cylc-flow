@@ -26,6 +26,7 @@
 
 ---
 language: python
+  - "3.7"
 cache: pip
 virtualenv:
   # we need system packages in Travis-CI's virtualenv in order to access pygtk, installed via apt-get

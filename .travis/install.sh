@@ -25,36 +25,26 @@ shopt -s extglob
 args=("$@")
 
 # pygtk via apt-get, necessary for both unit and functional tests
-sudo apt-get install graphviz libgraphviz-dev python-gtk2-dev heirloom-mailx
+sudo apt-get install heirloom-mailx
 # coverage dependencies
 pip install coverage pytest-cov mock
 
 # install dependencies required for running unit tests
 if grep 'unit-tests' <<< "${args[@]}"; then
-    #pip install EmPy pyopenssl pycodestyle pytest mock
-    # TODO: remove EmPy from testing, see:  #2958
     pip install pyopenssl pycodestyle pytest mock
+    # TODO: EmPy removed from testing, see:  #2958
 fi
 
 # install dependencies required for running functional tests
 if grep 'functional-tests' <<< "${args[@]}"; then
-    # pygraphviz needs special treatment to avoid an error from 
-    # "from . import release"
-    #pip install EmPy pyopenssl
-    # TODO: remove EmPy from testing, see:  #2958
     pip install pyopenssl
-    pip install pygraphviz \
-      --install-option="--include-path=/usr/include/graphviz" \
-      --install-option="--library-path=/usr/lib/graphviz/"
+    # TODO: EmPy removed from testing, see:  #2958
 fi
 
 # install dependencies required for building documentation
 if grep 'docs' <<< "${args[@]}$"; then
     pip install sphinx
     sudo apt-get install texlive-latex-base
-    pip install pygraphviz \
-      --install-option="--include-path=/usr/include/graphviz" \
-      --install-option="--library-path=/usr/lib/graphviz/"
 fi
 
 # configure local SSH for Cylc jobs
