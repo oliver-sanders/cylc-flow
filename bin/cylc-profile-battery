@@ -800,7 +800,7 @@ def run_analysis(experiments, versions, interactive=False,
         if plt_dir:
             print(
                 f'Results for experiment "{experiment["name"]}" have been '
-                f'written out to "{plt_dir}"'
+                f'written out to "{plt_dir}"')
 
 def ls(exp_names, ver_names, delete=False):
     """List all results for the provided experiment and version names.
@@ -946,7 +946,7 @@ def main():
 
     if not prof.IS_GIT_REPO:
         print('ERROR: profiling requires cylc to be a git repository.',
-              file=sys.stderr))
+              file=sys.stderr)
         sys.exit(2)
 
     # Promote mode.
