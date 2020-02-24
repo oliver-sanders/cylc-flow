@@ -55,7 +55,7 @@ unittest: &unittest
   script:
     - pycodestyle
     - .travis/shellchecker
-    - pytest --cov-append --cov=cylc/flow
+    - pytest --cov-append --cov=cylc/flow -rs
   after_success:
     # Report metrics, such as coverage
     - coverage combine --append
