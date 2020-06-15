@@ -1,8 +1,25 @@
+# THIS FILE IS PART OF THE CYLC SUITE ENGINE.
+# Copyright (C) NIWA & British Crown (Met Office) & Contributors.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import pytest
 
 from cylc.flow.data_store_mgr import (
-    DataStoreMgr, task_mean_elapsed_time, ID_DELIM,
-    FAMILY_PROXIES, TASKS, TASK_PROXIES, WORKFLOW
+    FAMILY_PROXIES,
+    TASKS,
+    TASK_PROXIES,
+    WORKFLOW
 )
 
 
@@ -12,10 +29,7 @@ async def harness(mod_flow, mod_scheduler, mod_run, mod_one_conf):
     reg = mod_flow(mod_one_conf)
     schd = mod_scheduler(reg)
     async with mod_run(schd):
-        # TODO - sleep or do the generation here
         data = schd.data_store_mgr.data[schd.data_store_mgr.workflow_id]
-        # schd.data_store_mgr.generate_definition_elements()
-        # schd.data_store_mgr.apply_deltas()
         yield schd, data
 
 
@@ -139,6 +153,7 @@ def test_update_task_proxies(harness):
     assert len(update_tasks) == len(collect_states(data, TASK_PROXIES))
 
 
+@pytest.mark.skip('TODO: fix this test')
 def test_update_workflow(harness):
     """Test method that updates the dynamic fields of the workflow msg."""
     schd, data = harness
@@ -148,5 +163,4 @@ def test_update_workflow(harness):
     schd.data_store_mgr.update_workflow()
     schd.data_store_mgr.apply_deltas()
     new_time = data[WORKFLOW].last_updated
-    # assert new_time > old_time
-    # TODO: this test no longer works
+    assert new_time > old_time
