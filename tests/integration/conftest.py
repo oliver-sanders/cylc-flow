@@ -72,31 +72,22 @@ def _pytest_passed(request):
     ))
 
 
-def _rmtree(path, tries=5):
-    """Remove a directory and its contents.
+def onerror(func, path, exc_info):
+    """Callback function for shutil rmtree
+        This solves NFS problems"""
+    import os
+    from pathlib import Path
+    from shutil import rmtree
+    from cylc.flow import LOG
+    try:
+        # get parent folder of path and give
+        tmp = Path(path)
+        os.chmod(tmp.parent, 0o700)
+        func(path)
+    except Exception as ex:
+        LOG.error(f"Error deleting {path}", ex)
+        rmtree(path, ignore_errors=True)
 
-    Attempt to remove a directory up to ``tries`` times before failing.
-
-    This should be used in-place of ``shutil.rmtree`` which doesn't
-    work reliably on NFS.
-
-    See also:
-        * https://stackoverflow.com/questions/58943374/
-          shutil-rmtree-error-when-trying-to-remove-nfs-mounted-directory
-        * https://bugzilla.redhat.com/show_bug.cgi?id=1362667
-
-    Args:
-        path (pathlib.Path): The directory to remove.
-        tries (int): Maximum number of attempts to make.
-
-    """
-    for _ in range(tries):
-        try:
-            rmtree(path)
-            return
-        except OSError as exc:
-            pass
-    raise exc
 
 
 @pytest.fixture(scope='session')
@@ -128,7 +119,7 @@ def mod_test_dir(request, ses_test_dir):
     yield path
     if _pytest_passed(request):
         # test passed -> remove all files
-        _rmtree(path)
+        rmtree(path, onerror=onerror)
     else:
         # test failed -> remove the test dir if empty
         _rm_if_empty(path)
@@ -142,7 +133,7 @@ def test_dir(request, mod_test_dir):
     yield path
     if _pytest_passed(request):
         # test passed -> remove all files
-        _rmtree(path)
+        rmtree(path, onerror=onerror)
     else:
         # test failed -> remove the test dir if empty
         _rm_if_empty(path)
