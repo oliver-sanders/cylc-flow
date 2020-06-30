@@ -16,6 +16,7 @@
 """Default fixtures for functional tests."""
 
 from functools import partial
+import os
 from pathlib import Path
 import re
 from shutil import rmtree
@@ -23,6 +24,8 @@ from shutil import rmtree
 import pytest
 
 from cylc.flow.cfgspec.glbl_cfg import glbl_cfg
+from cylc.flow import LOG
+from cylc.flow.scheduler_cli import _close_logs
 from cylc.flow.wallclock import get_current_time_string
 
 from . import (
@@ -74,20 +77,13 @@ def _pytest_passed(request):
 
 def onerror(func, path, exc_info):
     """Callback function for shutil rmtree
-        This solves NFS problems"""
-    import os
-    from pathlib import Path
-    from shutil import rmtree
-    from cylc.flow import LOG
+        This hides from NFS problems"""
     try:
-        # get parent folder of path and give
-        tmp = Path(path)
-        os.chmod(tmp.parent, 0o700)
+        _close_logs()
         func(path)
     except Exception as ex:
         LOG.error(f"Error deleting {path}", ex)
         rmtree(path, ignore_errors=True)
-
 
 
 @pytest.fixture(scope='session')
