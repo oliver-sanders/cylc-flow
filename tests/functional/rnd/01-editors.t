@@ -19,11 +19,15 @@
 . "$(dirname "$0")/test_header"
 set_test_number 6
 #-------------------------------------------------------------------------------
+echo '#1' >&2
+cylc get-global-config --sparse &>2
 
 # editors not set in the config or with envvars
 TEST_NAME="$TEST_NAME_BASE-defaults"
 export EDITOR=
 export GEDITOR=
+echo '#2' >&2
+cylc get-global-config --sparse &>2
 run_ok "$TEST_NAME" cylc get-global-config -i '[editors]'
 cmp_ok "${TEST_NAME}.stdout" << __HERE__
 terminal = vi
@@ -34,6 +38,8 @@ __HERE__
 TEST_NAME="$TEST_NAME_BASE-envvar-override"
 export EDITOR=editor
 export GEDITOR=geditor
+echo '#3' >&2
+cylc get-global-config --sparse &>2
 run_ok "$TEST_NAME" cylc get-global-config -i '[editors]'
 cmp_ok "${TEST_NAME}.stdout" << __HERE__
 terminal = editor
@@ -44,6 +50,8 @@ __HERE__
 TEST_NAME="$TEST_NAME_BASE-config-override"
 export EDITOR=editor
 export GEDITOR=geditor
+echo '#4' >&2
+cylc get-global-config --sparse &>2
 create_test_globalrc '' '
 [editors]
     terminal = myeditor
