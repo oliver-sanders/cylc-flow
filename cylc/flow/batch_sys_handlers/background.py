@@ -13,7 +13,12 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-"""Background job submission and manipulation."""
+"""Runs task job scripts as Unix background processes.
+
+If an :cylc:conf:`execution time limit` is specified for a task, its job will
+be wrapped by the ``timeout`` command.
+
+"""
 
 import errno
 import os

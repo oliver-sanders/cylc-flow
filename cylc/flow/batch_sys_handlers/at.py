@@ -13,7 +13,16 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-"""Logic to submit jobs to the "at" batch system."""
+"""Submits task job scripts to the rudimentary Unix ``at`` scheduler.
+
+.. note::
+
+    The ``atd`` daemon must be running.
+
+If an :cylc:conf:`execution time limit` is specified for a task, its job will
+be wrapped by the ``timeout`` command.
+
+"""
 
 import errno
 import os
