@@ -1,4 +1,5 @@
 #!Jinja2
+
 [cylc]
     UTC mode = True
    [[reference test]]
@@ -8,7 +9,8 @@
     initial cycle point=1999
     final cycle point=1999
     [[graph]]
-        P1Y="""bad-submitter:submit-failed => grepper"""
+        P1Y = bad-submitter:submit-failed => grepper
+
 [runtime]
     [[root]]
     [[bad-submitter]]

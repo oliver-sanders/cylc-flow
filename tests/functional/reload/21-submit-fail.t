@@ -17,21 +17,16 @@
 #-------------------------------------------------------------------------------
 # Test task submit failed + reload
 # https://github.com/cylc/cylc-flow/issues/2964
+export REQUIRE_PLATFORM='batch:at'
 . "$(dirname "$0")/test_header"
-
-skip_darwin 'atrun hard to configure on Mac OS'
-
 set_test_number 4
 
-create_test_global_config '
+create_test_global_config "
 [platforms]
-    [[platypus]]
-        hosts = localhost
-        install target = localhost
-        batch system = at
+    [[$CYLC_TEST_PLATFORM]]
         batch submit command template = sleep 5
         submission retry delays = 3*PT5S
-'
+"
 
 install_suite "${TEST_NAME_BASE}" "${TEST_NAME_BASE}"
 
