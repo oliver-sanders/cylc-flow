@@ -52,5 +52,5 @@ cmp_ok 'edited-job-activity.log' <<__LOG__
 [(('event-handler-00', 'succeeded'), 1) out] hello
 __LOG__
 
-purge_suite "${SUITE_NAME}"
+purge
 exit
