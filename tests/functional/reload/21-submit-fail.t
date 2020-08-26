@@ -50,5 +50,5 @@ cmp_ok 'db.out' <<'__OUT__'
 1|t1|4|
 __OUT__
 
-purge_suite "${SUITE_NAME}"
+purge
 exit
