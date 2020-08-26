@@ -35,4 +35,4 @@ run_ok "${TEST_NAME_BASE}-check-fail" test "${TASKS}" -eq 4
 #-------------------------------------------------------------------------------
 grep_ok 'suite timed out after' "${SUITE_RUN_DIR}/log/suite/log"
 #-------------------------------------------------------------------------------
-purge_suite "${SUITE_NAME}"
+purge

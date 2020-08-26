@@ -28,5 +28,5 @@ poll_suite_running
 run_ok "${TEST_NAME_BASE}-client" \
     cylc client "${SUITE_NAME}" 'release_suite' -n
 run_ok "${TEST_NAME_BASE}-run" wait "${CYLC_RUN_PID}"
-purge_suite "${SUITE_NAME}"
+purge
 exit

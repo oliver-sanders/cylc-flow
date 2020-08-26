@@ -33,4 +33,4 @@ DB_FILE="$RUN_DIR/${SUITE_NAME}/log/db"
 QUERY='SELECT COUNT(*) FROM task_states WHERE status == "failed"'
 run_ok "${TEST_NAME}" test "$(sqlite3 "${DB_FILE}" "${QUERY}")" -eq 4
 #-------------------------------------------------------------------------------
-purge_suite "${SUITE_NAME}"
+purge

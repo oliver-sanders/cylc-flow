@@ -97,5 +97,5 @@ suite_run_ok "${TEST_NAME_BASE}-restart-2" \
     timeout 120 cylc restart "${SUITE_NAME}" \
     --checkpoint=1 --debug --no-detach --reference-test
 
-purge_suite "${SUITE_NAME}"
+purge
 exit

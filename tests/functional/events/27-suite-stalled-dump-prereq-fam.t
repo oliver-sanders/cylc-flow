@@ -34,5 +34,5 @@ grep_ok "WARNING - Unmet prerequisites for f_2.1" \
     "${TEST_NAME_BASE}-run.stderr"
 grep_ok "WARNING -  \\* foo.1 succeeded" \
     "${TEST_NAME_BASE}-run.stderr"
-purge_suite "${SUITE_NAME}"
+purge
 exit

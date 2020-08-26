@@ -31,5 +31,5 @@ grep_ok "WARNING - Unmet prerequisites for foo.20100101T0600Z:" \
 grep_ok "WARNING -  \\* bar.20100101T0000Z succeeded" \
     "${TEST_NAME_BASE}-run.stderr"
 
-purge_suite "${SUITE_NAME}"
+purge
 exit
