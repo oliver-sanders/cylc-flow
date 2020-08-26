@@ -1,6 +1,5 @@
 #!Jinja2
-{% set HOST = environ['CYLC_TEST_BATCH_TASK_HOST'] %}
-{% set SITE_DIRECTIVES = environ['CYLC_TEST_BATCH_SITE_DIRECTIVES'] %}
+{% set HOST = environ['CYLC_TEST_HOST'] %}
 [cylc]
    [[reference test]]
        expected task failures = rem2.1
@@ -18,7 +17,6 @@
             job_type         = serial
             notification     = error
             wall_clock_limit = '120,60'
-            {{SITE_DIRECTIVES}}
         [[[remote]]]
             host = {{ HOST }}
     [[rem1]]
