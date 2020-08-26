@@ -42,4 +42,4 @@ TEST_NAME=${TEST_NAME_BASE}-check-timeout
 LOG="$RUN_DIR/${SUITE_NAME}/log/suite/log"
 run_ok "${TEST_NAME}" grep 'suite timed out after' "${LOG}"
 #-------------------------------------------------------------------------------
-purge_suite "${SUITE_NAME}"
+purge

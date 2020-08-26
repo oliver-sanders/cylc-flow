@@ -41,4 +41,4 @@ cmp_ok val.out <<__END__
  * (7.8.1) [runtime][foo, cat, dog][events][reset timer] - DELETED (OBSOLETE)
 __END__
 
-purge_suite "${SUITE_NAME}"
+purge

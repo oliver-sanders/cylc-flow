@@ -235,5 +235,5 @@ else
     fail "${TEST_NAME_BASE}-print.stderr"
 fi
 
-purge_suite "${SUITE_NAME}"
+purge
 exit

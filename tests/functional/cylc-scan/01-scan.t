@@ -58,5 +58,5 @@ run_ok "${TEST_NAME}" cylc scan --color=never --full -n "${SUITE_NAME}"
 grep_ok "${SUITE_NAME}" "${TEST_NAME}.stdout"
 
 cylc stop --kill --max-polls=20 --interval=1 "${SUITE_NAME}"
-purge_suite "${SUITE_NAME}"
+purge
 exit

@@ -46,5 +46,5 @@ cylc show "${SUITE_NAME}" 'c.1' | sed -n "/prerequisites/,/outputs/p" > 'c-prere
 cmp_ok "${TEST_SOURCE_DIR}/splitline_refs/c-ref" 'c-prereqs'
 #-------------------------------------------------------------------------------
 cylc shutdown --max-polls=10 --interval=2 --now "${SUITE_NAME}"
-purge_suite "${SUITE_NAME}"
+purge
 exit

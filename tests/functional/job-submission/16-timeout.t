@@ -57,4 +57,4 @@ stopper, 1, succeeded
 foo, 1, submit-failed
 __END__
 
-purge_suite "${SUITE_NAME}"
+purge

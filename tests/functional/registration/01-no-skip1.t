@@ -51,5 +51,5 @@ else
 fi
 
 rm -f "${RUND}/work"
-purge_suite "${SUITE_NAME}"
+purge
 exit

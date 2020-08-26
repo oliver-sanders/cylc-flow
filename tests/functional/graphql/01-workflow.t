@@ -129,6 +129,6 @@ cmp_json "${TEST_NAME}-out" \
     "${TEST_NAME_BASE}-workflows.stdout" \
     "$(cat expected)"
 
-purge_suite "${SUITE_NAME}"
+purge
 
 exit

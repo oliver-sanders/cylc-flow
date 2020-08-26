@@ -38,5 +38,5 @@ grep_ok "Timeout waiting for server response. This could be due to network or se
 kill -SIGCONT "${SUITE_PID}"
 # (kill does not return until signal is handled)
 cylc stop --max-polls=5 --interval=2 "${SUITE_NAME}"
-purge_suite "${SUITE_NAME}"
+purge
 exit

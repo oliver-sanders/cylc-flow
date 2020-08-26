@@ -30,5 +30,5 @@ contains_ok "${SUITE_RUN_DIR}/log/suite/log.edited" <<__OUT__
 suite stalled
 __OUT__
 
-purge_suite "${SUITE_NAME}"
+purge
 exit

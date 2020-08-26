@@ -28,5 +28,5 @@ run_fail "${TEST_NAME}" cylc validate -v "${SUITE_NAME}"
 grep_ok "SuiteConfigError: use 'runahead limit' OR 'max active cycle points', not both" \
   "${TEST_NAME}.stderr"
 #-------------------------------------------------------------------------------
-purge_suite "${SUITE_NAME}"
+purge
 exit

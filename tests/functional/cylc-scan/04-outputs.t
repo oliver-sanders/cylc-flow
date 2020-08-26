@@ -108,5 +108,5 @@ __END__
 
 # Stop and purge the suite.
 cylc stop --max-polls=20 --interval=1 "${SUITE_NAME}"
-purge_suite "${SUITE_NAME}"
+purge
 exit
