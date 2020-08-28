@@ -76,6 +76,7 @@ jobs:
         ]
         platform: [
           'local_background_indep_tcp',
+          'remote_background_indep_poll'
         ]
     env:
       BASE: ${{ matrix.tests[0] }}
