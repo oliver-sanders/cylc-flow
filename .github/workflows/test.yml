@@ -112,13 +112,13 @@ jobs:
           fi
           # NOTE: $BASE is purposefully un-quoted
           etc/bin/run-functional-tests \
-              --platform "${{ matrix.platform }}" \
+              --platform "${PLATFORM}" \
               -j "${NPROC}" \
               --state=save ${BASE} \
           || (
               echo '=== Re-running Failed Tests ==='
               CHUNK= etc/bin/run-functional-tests \
-                  --platform "${{ matrix.platform }}" \
+                  --platform "${PLATFORM}" \
                   -j "${NPROC}" \
                   --state=save,failed
           )
