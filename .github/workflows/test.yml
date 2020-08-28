@@ -100,8 +100,8 @@ jobs:
 
       - name: Swarm
         run: |
-          etc/bin/swarm --yes --debug build
           etc/bin/swarm --yes --debug configure
+          etc/bin/swarm --yes --debug build
           etc/bin/swarm --yes --debug run
 
       - name: Test
