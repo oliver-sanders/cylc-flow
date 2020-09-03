@@ -29,6 +29,5 @@ create_test_global_config "" "
     batch system = my_background2
 "
 
-
 reftest
 exit
