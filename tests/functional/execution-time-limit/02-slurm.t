@@ -16,7 +16,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #-------------------------------------------------------------------------------
 # Test execution time limit setting, slurm job
-CYLC_TEST_BATCH_SYS="${TEST_NAME_BASE##??-}"
+CYLC_TEST_BATCH_SYS="$(sed 's/.*\/...\(.*\)\.t/\1/' <<< "$0")"
 export REQUIRE_PLATFORM="batch:$CYLC_TEST_BATCH_SYS"
 . "$(dirname "$0")/test_header"
 #-------------------------------------------------------------------------------
