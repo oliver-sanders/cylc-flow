@@ -205,3 +205,13 @@ class DictTree:
             return self[key]
         except KeyError:
             return default
+
+    def update(self, other):
+        """Add items from other into self."""
+        for key in other:
+            self.__setitem(key, other[key])
+
+    def update2(self, other):
+        """Add items from other when not set in self."""
+        for key in set(other) - set(self):
+            self.__setitem(key, other[key])

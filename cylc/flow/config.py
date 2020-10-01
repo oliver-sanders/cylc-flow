@@ -1645,8 +1645,9 @@ class SuiteConfig:
                 # These can't just be a reference to root runtime as we have to
                 # make some items task-specific: e.g. subst task name in URLs.
                 self.cfg['runtime'][name] = OrderedDictWithDefaults()
-                replicate(self.cfg['runtime'][name],
-                          self.cfg['runtime']['root'])
+                self.cfg['runtime'][name].update2(
+                    self.cfg['runtime']['root']
+                )
                 if 'root' not in self.runtime['descendants']:
                     # (happens when no runtimes are defined in flow.cylc)
                     self.runtime['descendants']['root'] = []
