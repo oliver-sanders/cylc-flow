@@ -407,7 +407,6 @@ class TaskEventsManager():
             ):
                 return True
             signal = message[len(FAIL_MESSAGE_PREFIX):]
-            self._db_events_insert(itask, "signaled", signal)
             self.suite_db_mgr.put_update_task_jobs(
                 itask, {"run_signal": signal})
             if self._process_message_failed(
@@ -421,14 +420,12 @@ class TaskEventsManager():
             ):
                 return True
             aborted_with = message[len(ABORT_MESSAGE_PREFIX):]
-            self._db_events_insert(itask, "aborted", message)
             self.suite_db_mgr.put_update_task_jobs(
                 itask, {"run_signal": aborted_with})
             if self._process_message_failed(itask, event_time, aborted_with):
                 self.spawn_func(itask, TASK_OUTPUT_FAILED)
         elif message.startswith(VACATION_MESSAGE_PREFIX):
             # Task job pre-empted into a vacation state
-            self._db_events_insert(itask, "vacated", message)
             itask.set_summary_time('started')  # unset
             if TimerFlags.SUBMISSION_RETRY in itask.try_timers:
                 itask.try_timers[TimerFlags.SUBMISSION_RETRY].num = 0
@@ -459,8 +456,6 @@ class TaskEventsManager():
                 itask, itask.state.status, message)
             if severity in LOG_LEVELS.values():
                 severity = getLevelName(severity)
-            self._db_events_insert(
-                itask, ("message %s" % str(severity).lower()), message)
         lseverity = str(severity).lower()
         if lseverity in self.NON_UNIQUE_EVENTS:
             itask.non_unique_events.setdefault(lseverity, 0)
@@ -530,10 +525,6 @@ class TaskEventsManager():
         """Set up handlers for a task event."""
         if itask.tdef.run_mode != 'live':
             return
-        msg = ""
-        if message != "job %s" % event:
-            msg = message
-        self._db_events_insert(itask, event, msg)
         self._setup_job_logs_retrieval(itask, event)
         self._setup_event_mail(itask, event)
         self._setup_custom_event_handlers(itask, event, message)
@@ -546,13 +537,6 @@ class TaskEventsManager():
             del self.event_timers[id_key]
         else:
             self.event_timers[id_key].unset_waiting()
-
-    def _db_events_insert(self, itask, event="", message=""):
-        """Record an event to the DB."""
-        self.suite_db_mgr.put_insert_task_events(itask, {
-            "time": get_current_time_string(),
-            "event": event,
-            "message": message})
 
     def _process_event_email(self, schd_ctx, ctx, id_keys):
         """Process event notification, by email."""

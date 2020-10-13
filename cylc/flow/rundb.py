@@ -182,7 +182,6 @@ class CylcSuiteDAO:
     TABLE_SUITE_PARAMS_CHECKPOINTS = "suite_params_checkpoints"
     TABLE_SUITE_TEMPLATE_VARS = "suite_template_vars"
     TABLE_TASK_JOBS = "task_jobs"
-    TABLE_TASK_EVENTS = "task_events"
     TABLE_TASK_ACTION_TIMERS = "task_action_timers"
     TABLE_CHECKPOINT_ID = "checkpoint_id"
     TABLE_TASK_LATE_FLAGS = "task_late_flags"
@@ -264,14 +263,6 @@ class CylcSuiteDAO:
             ["platform_name"],
             ["batch_sys_name"],
             ["batch_sys_job_id"],
-        ],
-        TABLE_TASK_EVENTS: [
-            ["name"],
-            ["cycle"],
-            ["time"],
-            ["submit_num", {"datatype": "INTEGER"}],
-            ["event"],
-            ["message"],
         ],
         TABLE_TASK_LATE_FLAGS: [
             ["cycle", {"is_primary_key": True}],

@@ -476,10 +476,6 @@ class SuiteDatabaseManager:
             "time": get_current_time_string(),
             "event": CylcSuiteDAO.CHECKPOINT_LATEST_EVENT})
 
-    def put_insert_task_events(self, itask, args):
-        """Put INSERT statement for task_events table."""
-        self._put_insert_task_x(CylcSuiteDAO.TABLE_TASK_EVENTS, itask, args)
-
     def put_insert_task_late_flags(self, itask):
         """If itask is late, put INSERT statement to task_late_flags table."""
         if itask.is_late:
