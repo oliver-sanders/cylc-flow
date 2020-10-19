@@ -55,11 +55,9 @@ compatibility, the `cylc run` command will automatically symlink an existing
 `suite.rc` file to `flow.cylc`.
 
 Remove cylc register's option `--run-dir=DIR`, which created a run directory
-symlink to `DIR` (see #......).
+symlink to `DIR` (see #3884).
 
 ### Enhancements
-
-[#](https://github.com/cylc/cylc-flow/pull/) - Directories `run`, `log`, `share`, `share/cycle`, `work` now have the option to be redirected to configured directories by symlink.
 
 [#3899](https://github.com/cylc/cylc-flow/pull/3899) - CLI changes
 * Commands no longer re-invoke (so you get `cylc run` not `cylc-run`).
@@ -68,6 +66,10 @@ symlink to `DIR` (see #......).
 * New entry point for defining Cylc sub-commands.
 * remove `cylc check-software` (use standard tools like pipdeptree)
 * remove `cylc nudge` (no longer needed)
+
+[#3884](https://github.com/cylc/cylc-flow/pull/3884) - Directories `run`,
+`log`, `share`, `share/cycle`, `work` now have the option to be redirected to
+configured directories by symlink.
 
 [#3856](https://github.com/cylc/cylc-flow/pull/3856) - fail the GraphQL query
 with a helpful message if the variables defined do not match the expected
