@@ -40,6 +40,6 @@ log_scan "${TEST_NAME_BASE}-retries" "${FILE}" 30 0.5 \
     '\[b.1] status=running: (received)succeeded' \
     '\[c.1] status=running: (received)succeeded'
 
-purge_suite "${SUITE_NAME}"
+purge
 
 exit

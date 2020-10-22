@@ -38,5 +38,5 @@ cylc ls-checkpoint "${SUITE_NAME}" 2 > ls-check-point-output.log
 grep_ok "VERSE" ls-check-point-output.log
 grep_ok "PHRASE" ls-check-point-output.log
 #-------------------------------------------------------------------------------
-purge_suite "${SUITE_NAME}"
+purge
 exit
