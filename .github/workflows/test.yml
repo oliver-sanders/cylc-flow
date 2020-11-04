@@ -41,15 +41,20 @@ jobs:
 
       - name: Unit Tests
         run: |
-          pytest -n 5 tests/unit
+          pytest --cov --cov-append -n 5 tests/unit
 
       - name: Integration Tests
         run: |
-          pytest -n 5 tests/integration
+          pytest --cov --cov-append -n 5 tests/integration
 
       - name: Doctests
         run: |
-          pytest -n 5 cylc/flow
+          pytest --cov --cov-append -n 5 cylc/flow
+
+      - name: Coverage
+        run: |
+          coverage report
+          bash <(curl -s https://codecov.io/bash)
 
 
   functional-tests:
@@ -68,6 +73,7 @@ jobs:
     env:
       BASE: ${{ matrix.tests[0] }}
       CHUNK: ${{ matrix.tests[1] }}
+      CYLC_COVERAGE: 1
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -88,7 +94,7 @@ jobs:
 
       - name: Install
         run: |
-          pip install ."[all]"
+          pip install -e ."[all]"
 
       - name: Test
         run: |
@@ -100,9 +106,12 @@ jobs:
           else
               NPROC=8
           fi
-          etc/bin/run-functional-tests -j "${NPROC}" --state=save "${BASE}" || (
+          etc/bin/run-functional-tests \
+              -j "${NPROC}" --state=save "${BASE}" \
+          || (
               echo '=== Re-running Failed Tests ==='
-              CHUNK= etc/bin/run-functional-tests -j "${NPROC}" --state=save,failed
+              CHUNK= etc/bin/run-functional-tests \
+                  -j "${NPROC}" --state=save,failed
           )
 
       - name: Debug
@@ -113,3 +122,9 @@ jobs:
               -exec echo '==== {} ====' \; -exec cat '{}' \;
           find "${TMPDIR:-/tmp}/${USER}/cylctb-"* -type f \
               -exec echo '==== {} ====' \; -exec cat '{}' \;
+
+      - name: Coverage
+        run: |
+          coverage combine
+          coverage report
+          bash <(curl -s https://codecov.io/bash)
