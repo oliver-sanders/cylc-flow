@@ -27,6 +27,7 @@ jobs:
       BASE: ${{ matrix.tests[0] }}
       CHUNK: ${{ matrix.tests[1] }}
       CYLC_TEST_PLATFORMS: ${{ matrix.tests[2] }}
+      CYLC_COVERAGE: 1
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -47,7 +48,7 @@ jobs:
 
       - name: Install
         run: |
-          pip install ."[all]"
+          pip install -e ."[all]"
           mkdir "$HOME/cylc-run"
 
       - name: Configure Atrun
@@ -113,3 +114,9 @@ jobs:
               -exec echo '==== {} ====' \; -exec cat '{}' \;
           find "${TMPDIR:-/tmp}/${USER}/cylctb-"* -type f \
               -exec echo '==== {} ====' \; -exec cat '{}' \;
+
+      - name: Coverage
+         run: |
+           coverage combine
+           coverage report
+           bash <(curl -s https://codecov.io/bash)
