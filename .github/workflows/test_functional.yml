@@ -115,8 +115,23 @@ jobs:
           find "${TMPDIR:-/tmp}/${USER}/cylctb-"* -type f \
               -exec echo '==== {} ====' \; -exec cat '{}' \;
 
+      - name: Coverage Combine
+        run: |
+          coverage combine || true
+          coverage report
+
+      - name: Remote Coverage
+        run: |
+          if [[ "${{ matrix.tests[2] }}" = _remote* ]]; then
+            rsync -av \
+              ${{ matrix.tests[2] }}:cylc-flow/ \
+              '.' \
+              --include '.coverage*' \
+              --exclude '*'
+            coverage combine || true
+            coverage report
+          fi
+
       - name: Coverage
-         run: |
-           coverage combine
-           coverage report
-           bash <(curl -s https://codecov.io/bash)
+        run: |
+          bash <(curl -s https://codecov.io/bash)

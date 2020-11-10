@@ -46,6 +46,6 @@ jobs:
           pytest --cov --cov-append -n 5 tests/integration
 
       - name: Coverage
-         run: |
+        run: |
            coverage report
            bash <(curl -s https://codecov.io/bash)
