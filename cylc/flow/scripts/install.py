@@ -16,15 +16,15 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-"""cylc register [OPTIONS] ARGS
+"""cylc install [OPTIONS] ARGS
 
-Register a new suite.
+Install a new suite.
 
-Register the name REG for the suite definition in PATH. The suite server
+Install the name REG for the suite definition in PATH. The suite server
 program can then be started, stopped, and targeted by name REG. (Note that
-"cylc run" can also register suites on the fly).
+"cylc run" can also install suites on the fly).
 
-Registration creates a suite run directory "~/cylc-run/REG/" containing a
+Installation creates a suite run directory "~/cylc-run/REG/" containing a
 ".service/source" symlink to the suite definition PATH. The .service directory
 will also be used for server authentication files at run time.
 
@@ -33,16 +33,16 @@ Suite names can be hierarchical, corresponding to the path under ~/cylc-run.
 Examples:
   # Register PATH/flow.cylc as dogs/fido
   # (with run directory ~/cylc-run/dogs/fido)
-  $ cylc register dogs/fido PATH
+  $ cylc install dogs/fido PATH
 
-  # Register $PWD/flow.cylc as dogs/fido.
-  $ cylc register dogs/fido
+  # Install $PWD/flow.cylc as dogs/fido.
+  $ cylc install dogs/fido
 
-  # Register $PWD/flow.cylc as the parent directory
+  # Install $PWD/flow.cylc as the parent directory
   # name: $(basename $PWD).
-  $ cylc register
+  $ cylc install
 
-The same suite can be registered with multiple names; this results in multiple
+The same suite can be installed with multiple names; this results in multiple
 suite run directories that link to the same suite definition.
 
 To "unregister" a suite, delete or rename its run directory (renaming it under
@@ -55,7 +55,7 @@ directory. You should consider deleting or renaming an existing run directory
 rather than just re-use it with another suite."""
 
 from cylc.flow.option_parsers import CylcOptionParser as COP
-from cylc.flow.suite_files import register
+from cylc.flow.suite_files import install
 from cylc.flow.terminal import cli_function
 
 
@@ -75,7 +75,7 @@ def get_option_parser():
 
 @cli_function(get_option_parser)
 def main(parser, opts, reg=None, src=None):
-    register(reg, src, redirect=opts.redirect)
+    install(reg, src, redirect=opts.redirect, rundir=opts.rundir)
 
 
 if __name__ == "__main__":
