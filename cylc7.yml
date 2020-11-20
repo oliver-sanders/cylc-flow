@@ -1,0 +1,15 @@
+name: cylc7
+channels:
+  - conda-forge
+  - c ska  # for pygtk https://anaconda.org/ska/pygtk
+  - defaults
+dependencies:
+  - python >=2.7,<3.0
+  - openssl
+  - pyopenssl
+  - requests >=2.4.2
+  - gtk2
+  - graphviz
+  - pygraphviz
+  - empy
+  - pygtk
