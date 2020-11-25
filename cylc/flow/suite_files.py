@@ -364,7 +364,7 @@ def get_suite_source_dir(reg, suite_owner=None):
         suite_d = os.path.dirname(srv_d)
         if os.path.exists(suite_d) and not is_remote_user(suite_owner):
             # suite exists but is not yet installed
-            install(reg=reg, source=suite_d)
+            install(flow_name=reg, source=suite_d)
             return suite_d
         raise SuiteServiceFileError(f"Suite not found: {reg}")
     else:
@@ -373,7 +373,7 @@ def get_suite_source_dir(reg, suite_owner=None):
         flow_file_path = os.path.join(source, SuiteFiles.FLOW_FILE)
         if not os.path.exists(flow_file_path):
             # suite exists but is probably using deprecated suite.rc
-            install(reg=reg, source=source)
+            install(flow_name=reg, source=source)
         return source
 
 
@@ -464,13 +464,13 @@ def parse_suite_arg(options, arg):
     return name, path
 
 
-def install(reg=None, source=None, redirect=False, rundir=None):
+def install(flow_name=None, source=None, redirect=False, rundir=None):
     """Install a suite, or renew its installation.
 
     Create suite service directory and symlink to suite source location.
 
     Args:
-        reg (str): suite name, default basename($PWD).
+        flow_name (str): workflow name, default basename($PWD).
         source (str): directory location of flow.cylc file, default $PWD.
         redirect (bool): allow reuse of existing name and run directory.
 
@@ -484,10 +484,19 @@ def install(reg=None, source=None, redirect=False, rundir=None):
            - Another suite already has this name (unless --redirect).
            - Trying to install a workflow that is nested inside of another.
     """
-    if reg is None:
-        reg = os.path.basename(os.getcwd())
-    _validate_reg(reg)
-    check_nested_run_dirs(reg)
+    if flow_name is None:
+        flow_name = os.path.basename(os.getcwd())
+    make_localhost_symlinks(flow_name)
+
+    is_valid, message = SuiteNameValidator.validate(flow_name)
+    if not is_valid:
+        raise SuiteServiceFileError(f'invalid suite name - {message}')
+
+    if os.path.isabs(flow_name):
+        raise SuiteServiceFileError(
+            f'suite name cannot be an absolute path: {flow_name}')
+
+    check_nested_run_dirs(flow_name)
 
     make_localhost_symlinks(reg)
 
@@ -529,11 +538,11 @@ def install(reg=None, source=None, redirect=False, rundir=None):
     if orig_source is not None and source != orig_source:
         if not redirect:
             raise SuiteServiceFileError(
-                f"the name '{reg}' already points to {orig_source}.\nUse "
+                f"the name '{flow_name}' already points to {orig_source}.\nUse "
                 "--redirect to re-use an existing name and run directory.")
         LOG.warning(
-            f"the name '{reg}' points to {orig_source}.\nIt will now be "
-            f"redirected to {source}.\nFiles in the existing {reg} run "
+            f"the name '{flow_name}' points to {orig_source}.\nIt will now be "
+            f"redirected to {source}.\nFiles in the existing {flow_name} run "
             "directory will be overwritten.\n")
         # Remove symlink to the original suite.
         os.unlink(os.path.join(srv_d, SuiteFiles.Service.SOURCE))
@@ -550,8 +559,8 @@ def install(reg=None, source=None, redirect=False, rundir=None):
             source_str = source
         os.symlink(source_str, target)
 
-    print(f'INSTALLED {reg} -> {source}')
-    return reg
+    print(f'INSTALLED {flow_name} -> {source}')
+    return flow_name
 
 
 def clean(reg):
