@@ -492,10 +492,9 @@ def install(flow_name=None, source=None, redirect=False, rundir=None):
     if not is_valid:
         raise SuiteServiceFileError(f'Invalid workflow name - {message}')
 
-    if PurePath.is_absolute(Path(flow_name)):
+    if Path.is_absolute(Path(flow_name)):
         raise SuiteServiceFileError(
             f'Workflow name cannot be an absolute path: {flow_name}')
-
     check_nested_run_dirs(flow_name)
 
     make_localhost_symlinks(reg)
@@ -647,6 +646,17 @@ def _remove_empty_reg_parents(reg, path):
             LOG.info(f'Removing directory: {parent}')
         except OSError:
             break
+
+
+def start_install_log(reg, no_detach):
+    if not no_detach:
+        while LOG.handlers:
+            LOG.handlers[0].close()
+            LOG.removeHandler(LOG.handlers[0])
+
+    install_log_path = get_install_log_name(reg)
+    handler = TimestampRotatingFileHandler(install_log_path, no_detach)
+    INSTALL_LOG.addHandler(handler)
 
 
 def remove_keys_on_server(keys):
