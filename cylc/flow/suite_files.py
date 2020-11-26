@@ -20,7 +20,7 @@
 # imported on demand.
 
 import os
-from pathlib import Path
+from pathlib import Path, PurePath
 import re
 import shutil
 import zmq.auth
@@ -485,16 +485,16 @@ def install(flow_name=None, source=None, redirect=False, rundir=None):
            - Trying to install a workflow that is nested inside of another.
     """
     if flow_name is None:
-        flow_name = os.path.basename(os.getcwd())
+        flow_name = (Path.cwd().stem)
     make_localhost_symlinks(flow_name)
 
     is_valid, message = SuiteNameValidator.validate(flow_name)
     if not is_valid:
-        raise SuiteServiceFileError(f'invalid suite name - {message}')
+        raise SuiteServiceFileError(f'Invalid workflow name - {message}')
 
-    if os.path.isabs(flow_name):
+    if PurePath.is_absolute(Path(flow_name)):
         raise SuiteServiceFileError(
-            f'suite name cannot be an absolute path: {flow_name}')
+            f'Workflow name cannot be an absolute path: {flow_name}')
 
     check_nested_run_dirs(flow_name)
 
