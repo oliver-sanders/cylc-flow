@@ -79,6 +79,11 @@ def get_suite_file_install_log_name(suite):
     return expandvars(path)
 
 
+def get_install_log_name(suite, *args):
+    """Return install log file path."""
+    return expandvars(get_suite_run_dir(suite, 'log', 'install', *args))
+
+
 def get_suite_run_config_log_dir(suite, *args):
     """Return suite run flow.cylc log directory, join any extra args."""
     return expandvars(get_suite_run_dir(suite, 'log', 'flow-config', *args))

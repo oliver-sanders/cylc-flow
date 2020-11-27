@@ -51,7 +51,7 @@ To "unregister" a suite, delete or rename its run directory (renaming it under
 """
 
 from cylc.flow.option_parsers import CylcOptionParser as COP
-from cylc.flow.suite_files import install
+from cylc.flow.install import install
 from cylc.flow.terminal import cli_function
 
 
