@@ -29,7 +29,7 @@ from cylc.flow.pathutil import (
     get_remote_suite_run_dir,
     get_remote_suite_run_job_dir,
     get_remote_suite_work_dir,
-    get_suite_run_dir,
+    get_workflow_run_dir,
     get_suite_run_job_dir,
     get_suite_run_log_dir,
     get_suite_run_log_name,
@@ -111,7 +111,7 @@ class TestPathutil(TestCase):
         # args = extra *args
         # tail2 = expected tail of return value from extra args
         for func, tail1 in (
-            (get_suite_run_dir, ''),
+            (get_workflow_run_dir, ''),
             (get_suite_run_job_dir, '/log/job'),
             (get_suite_run_log_dir, '/log/suite'),
             (get_suite_run_config_log_dir, '/log/flow-config'),

@@ -32,7 +32,7 @@ from cylc.flow.option_parsers import (
     Options
 )
 from cylc.flow.pathutil import (
-    get_suite_run_dir,
+    get_workflow_run_dir,
     get_suite_run_log_name,
     get_suite_file_install_log_name, make_localhost_symlinks)
 from cylc.flow.remote import _remote_cylc_cmd
@@ -368,7 +368,7 @@ def scheduler_cli(parser, options, args, is_restart=False):
 
 def _check_installation(reg):
     """Ensure the flow is installed."""
-    suite_run_dir = get_suite_run_dir(reg)
+    suite_run_dir = get_workflow_run_dir(reg)
     if not os.path.exists(suite_run_dir):
         sys.stderr.write(f'suite service directory not found '
                          f'at: {suite_run_dir}\n')

@@ -30,7 +30,7 @@ import aiofiles
 from cylc.flow import LOG
 from cylc.flow.exceptions import SuiteServiceFileError, WorkflowFilesError
 from cylc.flow.pathutil import (
-    get_suite_run_dir, make_localhost_symlinks, remove_dir)
+    get_workflow_run_dir, make_localhost_symlinks, remove_dir)
 from cylc.flow.platforms import get_platform
 from cylc.flow.hostuserutil import (
     get_user,
@@ -387,7 +387,7 @@ def get_suite_srv_dir(reg, suite_owner=None):
         or os.getenv("CYLC_SUITE_NAME") != reg
         or os.getenv("CYLC_SUITE_OWNER") != suite_owner
     ):
-        run_d = get_suite_run_dir(reg)
+        run_d = get_workflow_run_dir(reg)
     return os.path.join(run_d, SuiteFiles.Service.DIRNAME)
 
 
@@ -748,10 +748,10 @@ def _validate_reg(reg):
 
 def check_nested_run_dirs(reg):
     """Disallow nested run dirs e.g. trying to install foo/bar where foo is
-    already a valid suite directory.
+    already a valid workflow directory.
 
     Args:
-        reg (str): suite name
+        reg (str): workflow name
 
     Raise:
         WorkflowFilesError:
@@ -760,7 +760,7 @@ def check_nested_run_dirs(reg):
                 depth)
     """
     exc_msg = (
-        'Nested run directories not allowed - cannot install suite name '
+        'Nested run directories not allowed - cannot install workflow name '
         '"%s" as "%s" is already a valid run directory.')
 
     def _check_child_dirs(path, depth_count=1):

@@ -67,13 +67,20 @@ def get_option_parser():
         action="store_true", default=False, dest="redirect")
 
     parser.add_option(
-        "--run-name", help="Name the run ",
-        action="store", metavar="RUNDIR", default=None, dest="rundir")
+        "--run-name", help="Name the run. ",
+        action="store", default=None, dest="run_name")
 
     parser.add_option(
-        "--run-dir", help="Symlink $HOME/cylc-run/REG to RUNDIR/REG.",
-        action="store", metavar="RUNDIR", default=None, dest="rundir")
+    "--no-run-name", help="Install the workflow directly into ~/cylc-run/$(basename $PWD)",
+    action="store_true", default=False, dest="redirect")
 
+    parser.add_option(
+    "--symlinks", help="Set to false to override creating default symlinks.",
+    action="store_true", default=True, dest="symlinks")
+
+    parser.add_option(
+        "--directory", help="--directory=/path/to/flow implies install the workflow found in /path/to/flow (rather than $PWD).",
+        action="store", metavar="RUNDIR", default=None, dest="rundir")
 
 
 
@@ -82,7 +89,7 @@ def get_option_parser():
 
 @cli_function(get_option_parser)
 def main(parser, opts, reg=None, src=None):
-    install(reg, src, redirect=opts.redirect, rundir=opts.rundir)
+    install(reg, redirect=opts.redirect, rundir=opts.rundir)
 
 
 if __name__ == "__main__":

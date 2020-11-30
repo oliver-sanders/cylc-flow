@@ -17,6 +17,7 @@
 
 import os
 from os.path import expandvars
+import re
 from shutil import rmtree
 
 from cylc.flow import LOG
@@ -46,11 +47,11 @@ def get_remote_suite_work_dir(platform, suite, *args):
     )
 
 
-def get_suite_run_dir(suite, *args):
-    """Return local suite run directory, join any extra args."""
+def get_workflow_run_dir(flow_name, *args):
+    """Return local workflow run directory, join any extra args."""
     return expandvars(
         os.path.join(
-            get_platform()['run directory'], suite, *args
+            get_platform()['run directory'], flow_name, *args
         )
     )
 
@@ -58,40 +59,40 @@ def get_suite_run_dir(suite, *args):
 def get_suite_run_job_dir(suite, *args):
     """Return suite run job (log) directory, join any extra args."""
     return expandvars(
-        get_suite_run_dir(suite, 'log', 'job', *args)
+        get_workflow_run_dir(suite, 'log', 'job', *args)
     )
 
 
 def get_suite_run_log_dir(suite, *args):
     """Return suite run log directory, join any extra args."""
-    return expandvars(get_suite_run_dir(suite, 'log', 'suite', *args))
+    return expandvars(get_workflow_run_dir(suite, 'log', 'suite', *args))
 
 
 def get_suite_run_log_name(suite):
     """Return suite run log file path."""
-    path = get_suite_run_dir(suite, 'log', 'suite', 'log')
+    path = get_workflow_run_dir(suite, 'log', 'suite', 'log')
     return expandvars(path)
 
 
 def get_suite_file_install_log_name(suite):
     """Return suite file install log file path."""
-    path = get_suite_run_dir(suite, 'log', 'suite', 'file-installation-log')
+    path = get_workflow_run_dir(suite, 'log', 'suite', 'file-installation-log')
     return expandvars(path)
 
 
 def get_install_log_name(suite, *args):
     """Return install log file path."""
-    return expandvars(get_suite_run_dir(suite, 'log', 'install', *args))
+    return expandvars(get_workflow_run_dir(suite, 'log', 'install', *args))
 
 
 def get_suite_run_config_log_dir(suite, *args):
     """Return suite run flow.cylc log directory, join any extra args."""
-    return expandvars(get_suite_run_dir(suite, 'log', 'flow-config', *args))
+    return expandvars(get_workflow_run_dir(suite, 'log', 'flow-config', *args))
 
 
 def get_suite_run_pub_db_name(suite):
     """Return suite run public database file path."""
-    return expandvars(get_suite_run_dir(suite, 'log', 'db'))
+    return expandvars(get_workflow_run_dir(suite, 'log', 'db'))
 
 
 def get_suite_run_share_dir(suite, *args):
@@ -110,7 +111,7 @@ def get_suite_run_work_dir(suite, *args):
 
 def get_suite_test_log_name(suite):
     """Return suite run ref test log file path."""
-    return expandvars(get_suite_run_dir(suite, 'log', 'suite', 'reftest.log'))
+    return expandvars(get_workflow_run_dir(suite, 'log', 'suite', 'reftest.log'))
 
 
 def make_suite_run_tree(suite):
@@ -118,7 +119,7 @@ def make_suite_run_tree(suite):
     cfg = glbl_cfg().get()
     # Roll archive
     archlen = cfg['scheduler']['run directory rolling archive length']
-    dir_ = os.path.expandvars(get_suite_run_dir(suite))
+    dir_ = os.path.expandvars(get_workflow_run_dir(suite))
     for i in range(archlen, -1, -1):  # archlen...0
         if i > 0:
             dpath = dir_ + '.' + str(i)
@@ -133,7 +134,7 @@ def make_suite_run_tree(suite):
                 os.rename(dpath, dir_ + '.' + str(i + 1))
     # Create
     for dir_ in (
-        get_suite_run_dir(suite),
+        get_workflow_run_dir(suite),
         get_suite_run_log_dir(suite),
         get_suite_run_job_dir(suite),
         get_suite_run_config_log_dir(suite),
@@ -236,3 +237,15 @@ def remove_dir(path):
     else:
         LOG.info(f'Removing directory: {path}')
         rmtree(path)
+        raise WorkflowFilesError(f"Error when symlinking '{exc}'")
+
+
+def get_next_rundir_number(run_path):
+    """Return the new run number"""
+    run_n_path = os.path.join(run_path, "runN")
+    try:
+        old_run_path = os.readlink(run_n_path)
+        last_run_num = re.search(r'(?:run)(\d*$)', old_run_path).group(1)
+        return last_run_num + 1
+    except OSError:
+        return 1
