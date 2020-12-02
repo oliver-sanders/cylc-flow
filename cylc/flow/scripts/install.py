@@ -45,9 +45,6 @@ Examples:
 The same suite can be installed with multiple names; this results in multiple
 suite run directories that link to the same suite definition.
 
-To "unregister" a suite, delete or rename its run directory (renaming it under
-~/cylc-run effectively re-registers the original suite with the new name).
-
 """
 
 from cylc.flow.option_parsers import CylcOptionParser as COP
@@ -58,38 +55,45 @@ from cylc.flow.terminal import cli_function
 def get_option_parser():
     parser = COP(
         __doc__,
-        argdoc=[("[REG]", "Workflow name"),
-                ("[PATH]", "Workflow definition directory (defaults to $PWD)")])
+        argdoc=[("[FLOW_NAME]", "Workflow name"),
+                ("[SOURCE]", """Path to the workflow source directory.
+                             This defaults to $PWD""")])
 
     parser.add_option(
-        "--redirect", help="Allow an existing suite name and run directory"
-                           " to be used with another suite.",
-        action="store_true", default=False, dest="redirect")
+        "--flow-name", help="Install into ~/cylc-run/flow-name/runN ",
+        action="store", metavar="MY_FLOW", default=None, dest="flow_name")
 
     parser.add_option(
         "--run-name", help="Name the run. ",
-        action="store", default=None, dest="run_name")
+        action="store", metavar="RUN_NAME", default=None, dest="run_name")
 
     parser.add_option(
-    "--no-run-name", help="Install the workflow directly into ~/cylc-run/$(basename $PWD)",
-    action="store_true", default=False, dest="redirect")
+        "--no-run-name", help="Install the workflow directly into ~/cylc-run/$(basename $PWD)",
+        action="store_true", default=False, dest="no_run_name")
 
     parser.add_option(
-    "--symlinks", help="Set to false to override creating default symlinks.",
-    action="store_true", default=True, dest="symlinks")
+        "--no-symlinks", help="Use this option to override creating default local symlinks.",
+        action="store_true", default=False, dest="no_symlinks")
 
     parser.add_option(
-        "--directory", help="--directory=/path/to/flow implies install the workflow found in /path/to/flow (rather than $PWD).",
-        action="store", metavar="RUNDIR", default=None, dest="rundir")
-
-
+        "--directory", "-C",
+        help="Install the workflow found in path specfied (This defaults to $PWD).",
+        action="store", metavar="PATH/TO/FLOW", default=None, dest="source")
 
     return parser
 
 
 @cli_function(get_option_parser)
-def main(parser, opts, reg=None, src=None):
-    install(reg, redirect=opts.redirect, rundir=opts.rundir)
+def main(parser, opts, flow_name=None, src=None):
+    if opts.no_run_name and opts.run_name:
+        parser.error(
+            """options --no-run-name and --run-name are mutually exclusive.
+            Use one or the other""")
+    install(
+        flow_name=opts.flow_name,
+        source=opts.source,
+        run_name=opts.run_name,
+        no_symlinks=opts.no_symlinks)
 
 
 if __name__ == "__main__":

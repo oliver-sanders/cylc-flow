@@ -47,6 +47,14 @@ def get_remote_suite_work_dir(platform, suite, *args):
     )
 
 
+def get_source_dir(flow_name, directory=None):
+    """Return the source directory of the workflow."""
+    if directory:
+        return directory
+    else:
+        return os.path.join(get_platform()['run directory'], flow_name)
+
+
 def get_workflow_run_dir(flow_name, *args):
     """Return local workflow run directory, join any extra args."""
     return expandvars(
@@ -147,10 +155,12 @@ def make_suite_run_tree(suite):
             LOG.debug('%s: directory created', dir_)
 
 
-def make_localhost_symlinks(suite):
+def make_localhost_symlinks(flow_name, log_type=None):
     """Creates symlinks for any configured symlink dirs from glbl_cfg."""
-    dirs_to_symlink = get_dirs_to_symlink('localhost', suite)
-    rund = get_suite_run_dir(suite)
+    dirs_to_symlink = get_dirs_to_symlink('localhost', flow_name)
+    rund = get_workflow_run_dir(flow_name)
+    if log_type:
+        log_type.info("Create any symlinks that need creating....")
     for key, value in dirs_to_symlink.items():
         if key == 'run':
             dst = rund
@@ -162,10 +172,12 @@ def make_localhost_symlinks(suite):
                 f'Unable to create symlink to {src}.'
                 f' \'{value}\' contains an invalid environment variable.'
                 ' Please check configuration.')
+        if log_type:
+            log_type.info("Creating symlink from {src} to {dst}")
         make_symlink(src, dst)
 
 
-def get_dirs_to_symlink(install_target, suite):
+def get_dirs_to_symlink(install_target, flow_name):
     """Returns dictionary of directories to symlink from glbcfg."""
     dirs_to_symlink = {}
     symlink_conf = glbl_cfg().get(['symlink dirs'])
@@ -174,12 +186,12 @@ def get_dirs_to_symlink(install_target, suite):
         return dirs_to_symlink
     base_dir = symlink_conf[install_target]['run']
     if base_dir is not None:
-        dirs_to_symlink['run'] = os.path.join(base_dir, 'cylc-run', suite)
+        dirs_to_symlink['run'] = os.path.join(base_dir, 'cylc-run', flow_name)
     for dir_ in ['log', 'share', 'share/cycle', 'work']:
         link = symlink_conf[install_target][dir_]
         if link is None or link == base_dir:
             continue
-        dirs_to_symlink[dir_] = os.path.join(link, 'cylc-run', suite, dir_)
+        dirs_to_symlink[dir_] = os.path.join(link, 'cylc-run', flow_name, dir_)
     return dirs_to_symlink
 
 
@@ -242,10 +254,10 @@ def remove_dir(path):
 
 def get_next_rundir_number(run_path):
     """Return the new run number"""
-    run_n_path = os.path.join(run_path, "runN")
+    run_n_path = os.path.expanduser(os.path.join(run_path, "runN"))
     try:
         old_run_path = os.readlink(run_n_path)
         last_run_num = re.search(r'(?:run)(\d*$)', old_run_path).group(1)
-        return last_run_num + 1
-    except OSError:
+        return int(last_run_num) + 1
+    except OSError as exc:
         return 1

@@ -20,7 +20,7 @@
 # imported on demand.
 
 import os
-from pathlib import Path, PurePath
+from pathlib import Path
 import re
 import shutil
 import zmq.auth
@@ -746,7 +746,7 @@ def _validate_reg(reg):
             f'suite name cannot be an absolute path: {reg}')
 
 
-def check_nested_run_dirs(reg):
+def check_nested_run_dirs(source_path):
     """Disallow nested run dirs e.g. trying to install foo/bar where foo is
     already a valid workflow directory.
 
@@ -771,7 +771,7 @@ def check_nested_run_dirs(reg):
                 if depth_count < MAX_SCAN_DEPTH:
                     _check_child_dirs(result.path, depth_count + 1)
 
-    reg_path = os.path.normpath(reg)
+    reg_path = os.path.normpath(source_path)
     parent_dir = os.path.dirname(reg_path)
     while parent_dir != '':
         if is_valid_run_dir(parent_dir):
