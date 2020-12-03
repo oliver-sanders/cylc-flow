@@ -773,10 +773,10 @@ def check_nested_run_dirs(source_path):
 
     reg_path = os.path.normpath(source_path)
     parent_dir = os.path.dirname(reg_path)
-    while parent_dir != '':
+    while parent_dir not in ['', '/']:
         if is_valid_run_dir(parent_dir):
             raise WorkflowFilesError(
-                exc_msg % (reg, get_cylc_run_abs_path(parent_dir)))
+                exc_msg % (parent_dir, get_cylc_run_abs_path(parent_dir)))
         parent_dir = os.path.dirname(parent_dir)
 
     reg_path = get_cylc_run_abs_path(reg_path)
