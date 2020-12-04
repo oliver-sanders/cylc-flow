@@ -155,10 +155,9 @@ def make_suite_run_tree(suite):
             LOG.debug('%s: directory created', dir_)
 
 
-def make_localhost_symlinks(flow_name, log_type=None):
+def make_localhost_symlinks(rund, flow_name, log_type=None):
     """Creates symlinks for any configured symlink dirs from glbl_cfg."""
     dirs_to_symlink = get_dirs_to_symlink('localhost', flow_name)
-    rund = get_workflow_run_dir(flow_name)
     if log_type:
         log_type.info("Create any symlinks that need creating....")
     for key, value in dirs_to_symlink.items():

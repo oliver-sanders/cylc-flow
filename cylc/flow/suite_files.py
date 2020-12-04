@@ -453,7 +453,7 @@ def parse_suite_arg(options, arg):
                 path = os.path.join(arg, SuiteFiles.SUITE_RC)
                 if not os.path.exists(path):
                     raise SuiteServiceFileError(
-                        f'no flow.cylc or suite.rc in {arg}')
+                        f'no {SuiteFiles.FLOW_FILE} or {SuiteFiles.SUITE_RC} in {arg}')
                 else:
                     LOG.warning(
                         f'The filename "{SuiteFiles.SUITE_RC}" is deprecated '
@@ -746,7 +746,7 @@ def _validate_reg(reg):
             f'suite name cannot be an absolute path: {reg}')
 
 
-def check_nested_run_dirs(source_path):
+def check_nested_run_dirs(run_dir):
     """Disallow nested run dirs e.g. trying to install foo/bar where foo is
     already a valid workflow directory.
 
@@ -771,7 +771,7 @@ def check_nested_run_dirs(source_path):
                 if depth_count < MAX_SCAN_DEPTH:
                     _check_child_dirs(result.path, depth_count + 1)
 
-    reg_path = os.path.normpath(source_path)
+    reg_path = os.path.normpath(run_dir)
     parent_dir = os.path.dirname(reg_path)
     while parent_dir not in ['', '/']:
         if is_valid_run_dir(parent_dir):

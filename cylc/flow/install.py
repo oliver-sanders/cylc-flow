@@ -16,39 +16,25 @@
 
 """Cylc install."""
 
-from genericpath import exists
-from subprocess import Popen, PIPE
-from cylc.flow.suite_files import SuiteFiles, check_nested_run_dirs, get_suite_srv_dir
-import os
-import re
-from glob import glob
-from pathlib import Path
 import logging
-from cylc.flow.loggingutil import CylcLogFormatter
-from cylc.flow.pathutil import (
-    get_install_log_name, get_next_rundir_number, get_source_dir, make_localhost_symlinks)
-from cylc.flow.wallclock import (
-    get_current_time_string)
-
-
-
+import os
+from pathlib import Path
+from subprocess import PIPE, Popen
 from cylc.flow.exceptions import SuiteServiceFileError
-from cylc.flow.pathutil import get_workflow_run_dir
-from cylc.flow.platforms import get_platform
-from cylc.flow.hostuserutil import (
-    get_user,
-    is_remote_host,
-    is_remote_user
-)
+from cylc.flow.loggingutil import CylcLogFormatter
+from cylc.flow.pathutil import (get_next_rundir_number, get_workflow_run_dir,
+                                make_localhost_symlinks)
+from cylc.flow.suite_files import (SuiteFiles,
+                                   check_nested_run_dirs)
 from cylc.flow.unicode_rules import SuiteNameValidator
-
-
+from cylc.flow.wallclock import get_current_time_string
 
 INSTALL_LOG = logging.getLogger('cylc-install')
 INSTALL_LOG.addHandler(logging.NullHandler())
 INSTALL_LOG.setLevel(logging.INFO)
 
 FAIL_IF_EXIST_DIR = ['log', 'share', 'work', '_cylc-install']
+
 
 def _open_install_log(reg, rund, is_reload=False):
     """Open Cylc log handlers for an install."""
@@ -60,9 +46,14 @@ def _open_install_log(reg, rund, is_reload=False):
         load_type = "reload"
     else:
         load_type = "install"
-    rund = os.path.expanduser(rund)
-    log_path = os.path.join(rund, 'log', 'install',f"{time_str}-{load_type}.log")
-    os.makedirs(os.path.dirname(log_path), exist_ok=True)
+    rund = Path(rund).expanduser()
+    log_path = Path(
+        rund,
+        'log',
+        'install',
+        f"{time_str}-{load_type}.log")
+    log_parent_dir = log_path.parent
+    log_parent_dir.mkdir(exist_ok=True, parents=True)
     handler = logging.FileHandler(log_path)
     handler.setFormatter(CylcLogFormatter())
     INSTALL_LOG.addHandler(handler)
@@ -77,20 +68,9 @@ def _close_install_log():
             pass
 
 
-def _symlink_run_N(workflow_space):
-    """Symlinks runN to the appropriate run directory"""
-    # workflow_space = ~/cylc-run/$(basename $PWD)
-    run_num = get_next_rundir_number(workflow_space)
-    nn_path = os.path.join(workflow_space, 'runN')
-    if run_num != 1:
-        os.unlink(nn_path)
-    new_path = os.path.join(workflow_space, f'run{run_num}')
-    os.symlink(new_path, nn_path)
-
-
 def get_rsync_rund_cmd(src, dst, restart=False):
     """Create and return the rsync command used for cylc install/re-install.
-        Args: 
+        Args:
             src (str): file path location of source directory
             dst (str): file path location of destination directory
             restart (bool): indicate restart (--delete option added)
@@ -98,16 +78,15 @@ def get_rsync_rund_cmd(src, dst, restart=False):
         Return: rsync_cmd: command used for rsync.
 
     """
-
     rsync_cmd = ["rsync"]
     rsync_cmd.append("-av")
     if restart:
         rsync_cmd.append('--delete')
     ignore_dirs = ['.git', '.svn', '.cylcignore']
     for exclude in ignore_dirs:
-        if src.joinpath(exclude).exists():
+        if Path(src).joinpath(exclude).exists():
             rsync_cmd.append(f"--exclude={exclude}")
-    if src.joinpath('.cylcignore').exists():
+    if Path(src).joinpath('.cylcignore').exists():
         rsync_cmd.append("--exclude-from=.cylcignore")
     rsync_cmd.append(f"{src}/")
     rsync_cmd.append(f"{dst}")
@@ -115,8 +94,8 @@ def get_rsync_rund_cmd(src, dst, restart=False):
     return rsync_cmd
 
 
-def install(flow_name=None,source=None, run_name=None,
-    no_run_name=False, no_symlinks=False, reinstall=False):
+def install(flow_name=None, source=None, run_name=None,
+            no_run_name=False, no_symlinks=False, reinstall=False):
     """Install a suite, or renew its installation.
 
     Create suite service directory and symlink to suite source location.
@@ -137,8 +116,9 @@ def install(flow_name=None,source=None, run_name=None,
             Another suite already has this name (unless --redirect).
             Trying to install a workflow that is nested inside of another.
     """
-    if not source: 
+    if not source:
         source = Path.cwd()
+    source = Path(source).expanduser()
     if not flow_name:
         flow_name = (Path.cwd().stem)
     is_valid, message = SuiteNameValidator.validate(flow_name)
@@ -149,32 +129,35 @@ def install(flow_name=None,source=None, run_name=None,
             f'Workflow name cannot be an absolute path: {flow_name}')
     if run_name == '_cylc-install':
         raise SuiteServiceFileError(
-            f'Run name cannot be _cylc-install. Choose another run name.')
-
+            'Run name cannot be "_cylc-install".'
+            ' Please choose another run name.')
     validate_source_dir(source)
-    # Workflow setup is not illegal - install should go ahead
     basename_cwd = Path.cwd().stem
     run_path_base = os.path.expanduser(f'~/cylc-run/{basename_cwd}')
-    if run_name:
-        run_path_base = run_path_base + f'/{run_name}'
-    run_n = os.path.expanduser(os.path.join(run_path_base, 'runN'))
-    run_num = get_next_rundir_number(run_path_base)
-    rundir = os.path.join(run_path_base, f'run{run_num}')
-    if run_num == 1 and os.path.exists(rundir):
-        INSTALL_LOG.error(f"This path: {rundir} exists. Try using --run-name")
-    unlink_runN(run_n)
-    try: 
+    if no_run_name:
+        rundir = run_path_base
+    else:
+        if run_name:
+            run_path_base = run_path_base + f'/{run_name}'
+        run_n = os.path.expanduser(os.path.join(run_path_base, 'runN'))
+        run_num = get_next_rundir_number(run_path_base)
+        rundir = Path(run_path_base, f'run{run_num}')
+        if run_num == 1 and os.path.exists(rundir):
+            SuiteServiceFileError(
+                f"This path: {rundir} exists. Try using --run-name")
+        unlink_runN(run_n)
+    check_nested_run_dirs(rundir)
+    try:
         os.makedirs(os.path.expanduser(rundir), exist_ok=False)
     except OSError as e:
         if e.strerror == "File exists":
             raise SuiteServiceFileError(f"Run directory already exists : {e}")
-    link_runN(rundir)
     _open_install_log(flow_name, rundir)
-    if no_symlinks:
-        make_localhost_symlinks(flow_name, log_type=INSTALL_LOG)
+    link_runN(rundir)
+    if not no_symlinks:
+        make_localhost_symlinks(rundir, flow_name, log_type=INSTALL_LOG)
     # flow.cylc must exist so we can detect accidentally reversed args.
-    INSTALL_LOG.info(f"source directory is {source}")
-    flow_file_path = os.path.join(source, SuiteFiles.FLOW_FILE)
+    flow_file_path = os.path.expanduser(os.path.join(source, SuiteFiles.FLOW_FILE))
     if not os.path.isfile(flow_file_path):
         # If using deprecated suite.rc, symlink it into flow.cylc:
         suite_rc_path = os.path.join(source, SuiteFiles.SUITE_RC)
@@ -185,95 +168,56 @@ def install(flow_name=None,source=None, run_name=None,
                 f' of "{SuiteFiles.FLOW_FILE}". Symlink created.')
         else:
             raise SuiteServiceFileError(
-                f'no flow.cylc or suite.rc in {source}')
+                f'no {SuiteFiles.FLOW_FILE} or {SuiteFiles.SUITE_RC} in {source}')
     rsync_cmd = get_rsync_rund_cmd(source, os.path.expanduser(rundir))
-    proc = Popen(rsync_cmd, stdout=PIPE, stderr=PIPE)
+    proc = Popen(rsync_cmd, stdout=PIPE, stderr=PIPE, universal_newlines=True)
     stdout, stderr = proc.communicate()
+    INSTALL_LOG.info(f"Copying files from {source} to {rundir}")
+    INSTALL_LOG.info(f"{stdout}")
     if stderr:
-        print(stderr)
-    INSTALL_LOG.info(f"Copying files from {source} to {rundir}. {stdout}")
-    if stderr:
-        INSTALL_LOG.warning(f"An error occurred when copying files from {source} to {rundir}. {stderr}")
-    INSTALL_LOG.info(f"Workflow {flow_name} sucessfully installed into {rundir}")
+        INSTALL_LOG.warning(
+            f"An error occurred when copying files from {source} to {rundir}")
+        INSTALL_LOG.warning(f" Error: {stderr}")
+    cylc_install = Path(rundir, '_cylc_install')
+    cylc_install.mkdir(parents=True)
+    source_link = cylc_install.joinpath('source')
+    INSTALL_LOG.info(f"Creating symlink from {source_link}")
+    source_link.symlink_to(source)
+    INSTALL_LOG.info(f'INSTALLED {flow_name} -> {source}')
     _close_install_log()
     return
 
 
-
-
-
-    # See if suite already has a source or not
-    try:
-        orig_source = os.readlink(
-            os.path.join(srv_d, SuiteFiles.Service.SOURCE))
-    except OSError:
-        orig_source = None
-    else:
-        if not os.path.isabs(orig_source):
-            orig_source = os.path.normpath(
-                os.path.join(srv_d, orig_source))
-    if orig_source is not None and source != orig_source:
-        if not redirect:
-            raise SuiteServiceFileError(
-                f"the name '{flow_name}' already points to {orig_source}.\nUse "
-                "--redirect to re-use an existing name and run directory.")
-        INSTALL_LOG.warning(
-            f"the name '{flow_name}' points to {orig_source}.\nIt will now be "
-            f"redirected to {source}.\nFiles in the existing {flow_name} run "
-            "directory will be overwritten.\n")
-        # Remove symlink to the original suite.
-        os.unlink(os.path.join(srv_d, SuiteFiles.Service.SOURCE))
-
-    # Create symlink to the suite, if it doesn't already exist.
-    if orig_source is None or source != orig_source:
-        target = os.path.join(srv_d, SuiteFiles.Service.SOURCE)
-        if (os.path.abspath(source) ==
-                os.path.abspath(os.path.dirname(srv_d))):
-            # If source happens to be the run directory,
-            # create .service/source -> ..
-            source_str = ".."
-        else:
-            source_str = source
-        os.symlink(source_str, target)
-
-    INSTALL_LOG(f'INSTALLED {flow_name} -> {source}')
-    _close_install_log()
-    return flow_name
-
 def validate_source_dir(source):
-    """
-    Ensure the source directory is valid.
-    
+    """Ensure the source directory is valid.
+
     Args:
         source (path): Path to source directory
     Raises:
         SuiteServiceFileError:
-            No flow.cylc file found in source location.
-            Illegal name (can look like a relative path, but not absolute).
-            If nested workflows.
+            If log, share, work or _cylc-install directories exist in the
+            source directory.
     """
     # Ensure source dir does not contain log, share, work, _cylc_install
     for dir_ in FAIL_IF_EXIST_DIR:
-        path_to_check = os.path.join(Path(source), dir_)
-        if os.path.exists(path_to_check):
+        path_to_check = Path(source, dir_)
+        if path_to_check.exists():
             raise SuiteServiceFileError(
                 f'Installation failed. - {dir_} exists in source directory.')
-
-    check_nested_run_dirs(source)
-
 
 def unlink_runN(run_n):
     """Remove symlink runN"""
     try:
-        os.unlink(run_n)
+        Path(run_n).unlink()
     except OSError:
         pass
 
 
 def link_runN(latest_run):
     """Create symlink runN, pointing at the latest run"""
-    run_n = os.path.expanduser(os.path.join((os.path.dirname(latest_run)), 'runN'))
+    latest_run = Path(latest_run).expanduser()
+    run_n = Path(latest_run.parent,'runN')
     try:
-        os.symlink(os.path.expanduser(latest_run), run_n)
+        run_n.symlink_to(latest_run)
     except OSError:
         pass
