@@ -453,11 +453,12 @@ def parse_suite_arg(options, arg):
                 path = os.path.join(arg, SuiteFiles.SUITE_RC)
                 if not os.path.exists(path):
                     raise SuiteServiceFileError(
-                        f'no {SuiteFiles.FLOW_FILE} or {SuiteFiles.SUITE_RC} in {arg}')
+                        f'no {SuiteFiles.FLOW_FILE} or {SuiteFiles.SUITE_RC}'
+                        f' in {arg}')
                 else:
                     LOG.warning(
                         f'The filename "{SuiteFiles.SUITE_RC}" is deprecated '
-                        f'in favor of "{SuiteFiles.FLOW_FILE}".')
+                        f'in favour of "{SuiteFiles.FLOW_FILE}".')
         else:
             path = arg
             name = os.path.basename(os.path.dirname(arg))

@@ -96,14 +96,16 @@ def get_rsync_rund_cmd(src, dst, restart=False):
 
 def install(flow_name=None, source=None, run_name=None,
             no_run_name=False, no_symlinks=False, reinstall=False):
-    """Install a suite, or renew its installation.
+    """Install a workflow, or renew its installation.
 
-    Create suite service directory and symlink to suite source location.
+    Create symlink to suite source location, creating any symlinks for run, 
+    work, log, share, share/cycle directories.
 
     Args:
         flow_name (str): workflow name, default basename($PWD).
         source (str): directory location of flow.cylc file, default $PWD.
-        redirect (bool): allow reuse of existing name and run directory.
+        run_name (str): name of the run, overides run1, run2, run 3 etc...
+                        If specified will not create runN symlink.      
         rundir (str): for overriding the default cylc-run directory.
 
     Return:
@@ -186,7 +188,7 @@ def install(flow_name=None, source=None, run_name=None,
     source_link.symlink_to(source)
     INSTALL_LOG.info(f'INSTALLED {flow_name} -> {source}')
     _close_install_log()
-    return
+    return flow_name
 
 
 def validate_source_dir(source):

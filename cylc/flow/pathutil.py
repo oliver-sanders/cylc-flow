@@ -47,14 +47,6 @@ def get_remote_suite_work_dir(platform, suite, *args):
     )
 
 
-def get_source_dir(flow_name, directory=None):
-    """Return the source directory of the workflow."""
-    if directory:
-        return directory
-    else:
-        return os.path.join(get_platform()['run directory'], flow_name)
-
-
 def get_workflow_run_dir(flow_name, *args):
     """Return local workflow run directory, join any extra args."""
     return expandvars(
@@ -158,8 +150,6 @@ def make_suite_run_tree(suite):
 def make_localhost_symlinks(rund, flow_name, log_type=None):
     """Creates symlinks for any configured symlink dirs from glbl_cfg."""
     dirs_to_symlink = get_dirs_to_symlink('localhost', flow_name)
-    if log_type:
-        log_type.info("Create any symlinks that need creating....")
     for key, value in dirs_to_symlink.items():
         if key == 'run':
             dst = rund
