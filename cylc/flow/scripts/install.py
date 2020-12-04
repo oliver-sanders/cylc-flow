@@ -64,25 +64,36 @@ def get_option_parser():
         dest="flow_name")
 
     parser.add_option(
-        "--run-name", help="Name the run.",
-        action="store", metavar="RUN_NAME", default=None, dest="run_name")
-
-    parser.add_option(
-        "--no-run-name",
-        help="Install the workflow directly into ~/cylc-run/$(basename $PWD)",
-        action="store_true", default=False, dest="no_run_name")
-
-    parser.add_option(
-        "--no-symlinks",
-        help="Use this option to override creating default local symlinks.",
-        action="store_true", default=False, dest="no_symlinks")
-
-    parser.add_option(
         "--directory", "-C",
         help=(
             "Install the workflow found in path specfied."
             " This defaults to $PWD."),
-        action="store", metavar="PATH/TO/FLOW", default=None, dest="source")
+        action="store",
+        metavar="PATH/TO/FLOW",
+        default=None,
+        dest="source")
+
+    parser.add_option(
+        "--run-name",
+        help="Name the run.",
+        action="store",
+        metavar="RUN_NAME",
+        default=None,
+        dest="run_name")
+
+    parser.add_option(
+        "--no-run-name",
+        help="Install the workflow directly into ~/cylc-run/$(basename $PWD)",
+        action="store_true",
+        default=False,
+        dest="no_run_name")
+
+    parser.add_option(
+        "--no-symlinks",
+        help="Use this option to override creating default local symlinks.",
+        action="store_true",
+        default=False,
+        dest="no_symlinks")
 
     return parser
 
@@ -97,6 +108,7 @@ def main(parser, opts, flow_name=None, src=None):
         flow_name=opts.flow_name,
         source=opts.source,
         run_name=opts.run_name,
+        no_run_name=opts.no_run_name,
         no_symlinks=opts.no_symlinks)
 
 
