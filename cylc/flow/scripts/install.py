@@ -48,36 +48,40 @@ suite run directories that link to the same suite definition.
 """
 
 from cylc.flow.option_parsers import CylcOptionParser as COP
-from cylc.flow.install import install
+from cylc.flow.suite_files import install_workflow
 from cylc.flow.terminal import cli_function
 
 
 def get_option_parser():
-    parser = COP(
-        __doc__,
-        argdoc=[("[FLOW_NAME]", "Workflow name"),
-                ("[SOURCE]", """Path to the workflow source directory.
-                             This defaults to $PWD""")])
+    parser = COP(__doc__)
 
     parser.add_option(
-        "--flow-name", help="Install into ~/cylc-run/flow-name/runN ",
-        action="store", metavar="MY_FLOW", default=None, dest="flow_name")
+        "--flow-name",
+        help="Install into ~/cylc-run/flow-name/runN ",
+        action="store",
+        metavar="MY_FLOW",
+        default=None,
+        dest="flow_name")
 
     parser.add_option(
-        "--run-name", help="Name the run. ",
+        "--run-name", help="Name the run.",
         action="store", metavar="RUN_NAME", default=None, dest="run_name")
 
     parser.add_option(
-        "--no-run-name", help="Install the workflow directly into ~/cylc-run/$(basename $PWD)",
+        "--no-run-name",
+        help="Install the workflow directly into ~/cylc-run/$(basename $PWD)",
         action="store_true", default=False, dest="no_run_name")
 
     parser.add_option(
-        "--no-symlinks", help="Use this option to override creating default local symlinks.",
+        "--no-symlinks",
+        help="Use this option to override creating default local symlinks.",
         action="store_true", default=False, dest="no_symlinks")
 
     parser.add_option(
         "--directory", "-C",
-        help="Install the workflow found in path specfied (This defaults to $PWD).",
+        help=(
+            "Install the workflow found in path specfied."
+            " This defaults to $PWD."),
         action="store", metavar="PATH/TO/FLOW", default=None, dest="source")
 
     return parser
@@ -89,7 +93,7 @@ def main(parser, opts, flow_name=None, src=None):
         parser.error(
             """options --no-run-name and --run-name are mutually exclusive.
             Use one or the other""")
-    install(
+    install_workflow(
         flow_name=opts.flow_name,
         source=opts.source,
         run_name=opts.run_name,

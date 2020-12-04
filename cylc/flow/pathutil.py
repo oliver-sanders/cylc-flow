@@ -111,7 +111,8 @@ def get_suite_run_work_dir(suite, *args):
 
 def get_suite_test_log_name(suite):
     """Return suite run ref test log file path."""
-    return expandvars(get_workflow_run_dir(suite, 'log', 'suite', 'reftest.log'))
+    return expandvars(
+        get_workflow_run_dir(suite, 'log', 'suite', 'reftest.log'))
 
 
 def make_suite_run_tree(suite):
@@ -248,5 +249,5 @@ def get_next_rundir_number(run_path):
         old_run_path = os.readlink(run_n_path)
         last_run_num = re.search(r'(?:run)(\d*$)', old_run_path).group(1)
         return int(last_run_num) + 1
-    except OSError as exc:
+    except OSError:
         return 1

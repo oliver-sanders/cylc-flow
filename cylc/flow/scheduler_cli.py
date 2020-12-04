@@ -321,7 +321,7 @@ def scheduler_cli(parser, options, args, is_restart=False):
     except SuiteServiceFileError as exc:
         sys.exit(exc)
     make_localhost_symlinks(reg)
-    _check_registration(reg)
+    _check_installation(reg)
 
     # re-execute on another host if required
     _distribute(options.host, is_restart)
