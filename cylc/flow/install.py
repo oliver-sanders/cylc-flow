@@ -133,22 +133,23 @@ def install(flow_name=None, source=None, run_name=None,
             ' Please choose another run name.')
     validate_source_dir(source)
     basename_cwd = Path.cwd().stem
-    run_path_base = os.path.expanduser(f'~/cylc-run/{basename_cwd}')
+    run_path_base = Path('~', 'cylc-run', basename_cwd).expanduser()
+
     if no_run_name:
         rundir = run_path_base
     else:
         if run_name:
-            run_path_base = run_path_base + f'/{run_name}'
-        run_n = os.path.expanduser(os.path.join(run_path_base, 'runN'))
+            run_path_base = run_path_base.joinpath(run_name)
+        run_n = Path(run_path_base, 'runN').expanduser()
         run_num = get_next_rundir_number(run_path_base)
         rundir = Path(run_path_base, f'run{run_num}')
-        if run_num == 1 and os.path.exists(rundir):
+        if run_num == 1 and rundir.exists():
             SuiteServiceFileError(
                 f"This path: {rundir} exists. Try using --run-name")
         unlink_runN(run_n)
     check_nested_run_dirs(rundir)
     try:
-        os.makedirs(os.path.expanduser(rundir), exist_ok=False)
+        rundir.mkdir(exist_ok=False)
     except OSError as e:
         if e.strerror == "File exists":
             raise SuiteServiceFileError(f"Run directory already exists : {e}")
@@ -157,19 +158,19 @@ def install(flow_name=None, source=None, run_name=None,
     if not no_symlinks:
         make_localhost_symlinks(rundir, flow_name, log_type=INSTALL_LOG)
     # flow.cylc must exist so we can detect accidentally reversed args.
-    flow_file_path = os.path.expanduser(os.path.join(source, SuiteFiles.FLOW_FILE))
-    if not os.path.isfile(flow_file_path):
+    flow_file_path = source.joinpath(SuiteFiles.FLOW_FILE)
+    if not flow_file_path.is_file():
         # If using deprecated suite.rc, symlink it into flow.cylc:
-        suite_rc_path = os.path.join(source, SuiteFiles.SUITE_RC)
-        if os.path.isfile(suite_rc_path):
-            os.symlink(suite_rc_path, flow_file_path)
+        suite_rc_path = source.joinpath(SuiteFiles.SUITE_RC)
+        if suite_rc_path.is_file():
+            flow_file_path.symlink_to(suite_rc_path)
             INSTALL_LOG.warning(
                 f'The filename "{SuiteFiles.SUITE_RC}" is deprecated in favour'
                 f' of "{SuiteFiles.FLOW_FILE}". Symlink created.')
         else:
             raise SuiteServiceFileError(
                 f'no {SuiteFiles.FLOW_FILE} or {SuiteFiles.SUITE_RC} in {source}')
-    rsync_cmd = get_rsync_rund_cmd(source, os.path.expanduser(rundir))
+    rsync_cmd = get_rsync_rund_cmd(source, rundir)
     proc = Popen(rsync_cmd, stdout=PIPE, stderr=PIPE, universal_newlines=True)
     stdout, stderr = proc.communicate()
     INSTALL_LOG.info(f"Copying files from {source} to {rundir}")
