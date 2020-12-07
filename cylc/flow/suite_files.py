@@ -950,7 +950,7 @@ def install_workflow(flow_name=None, source=None, run_name=None,
     _open_install_log(flow_name, rundir)
     # create source symlink to be used as the basis of ensuring runs are
     # from a constistent source dir.
-    base_source_link= run_path_base.joinpath(SuiteFiles.Install.SOURCE)
+    base_source_link = run_path_base.joinpath(SuiteFiles.Install.SOURCE)
     if not base_source_link.exists():
         run_path_base.joinpath(SuiteFiles.Install.SOURCE).symlink_to(source)
     link_runN(rundir)
@@ -989,7 +989,8 @@ def install_workflow(flow_name=None, source=None, run_name=None,
         INSTALL_LOG.info(f"Creating symlink from {source_link}")
         source_link.symlink_to(source)
     else:
-        raise SuiteServiceFileError("Source directory between runs are not consistent")
+        raise SuiteServiceFileError(
+            "Source directory between runs are not consistent")
     INSTALL_LOG.info(f'INSTALLED {flow_name} -> {source}')
     _close_install_log()
     return flow_name

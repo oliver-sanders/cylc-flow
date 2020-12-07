@@ -288,7 +288,7 @@ def test_incorrect_environment_variables_raise_error(
                        r" to \$doh. '\$doh/cylc-run/test_workflow' contains an"
                        " invalid environment variable. Please check "
                        "configuration."):
-        make_localhost_symlinks('rund','test_workflow')
+        make_localhost_symlinks('rund', 'test_workflow')
 
 
 @pytest.mark.parametrize(

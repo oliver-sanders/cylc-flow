@@ -53,7 +53,11 @@ from cylc.flow.terminal import cli_function
 
 
 def get_option_parser():
-    parser = COP(__doc__)
+    parser = COP(__doc__,
+                 argdoc=[
+                     ("[REG]", "Workflow name"),
+                     ("[PATH]", "Workflow definition directory. "
+                                "This defaults to $PWD.")])
 
     parser.add_option(
         "--flow-name",
