@@ -80,11 +80,6 @@ def get_suite_file_install_log_name(suite):
     return expandvars(path)
 
 
-def get_install_log_name(suite, *args):
-    """Return install log file path."""
-    return expandvars(get_workflow_run_dir(suite, 'log', 'install', *args))
-
-
 def get_suite_run_config_log_dir(suite, *args):
     """Return suite run flow.cylc log directory, join any extra args."""
     return expandvars(get_workflow_run_dir(suite, 'log', 'flow-config', *args))
@@ -148,7 +143,7 @@ def make_suite_run_tree(suite):
             LOG.debug('%s: directory created', dir_)
 
 
-def make_localhost_symlinks(rund, flow_name, log_type=None):
+def make_localhost_symlinks(rund, flow_name, log_type=LOG):
     """Creates symlinks for any configured symlink dirs from glbl_cfg."""
     dirs_to_symlink = get_dirs_to_symlink('localhost', flow_name)
     for key, value in dirs_to_symlink.items():

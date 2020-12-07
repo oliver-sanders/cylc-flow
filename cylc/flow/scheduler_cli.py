@@ -264,7 +264,7 @@ RestartOptions = Options(
 def _auto_install():
     """Install a suite installed in the cylc-run directory."""
     try:
-        reg = suite_files.install()
+        reg = suite_files.install_workflow()
     except SuiteServiceFileError as exc:
         sys.exit(exc)
     # Replace this process with "cylc run REG ..." for 'ps -f'.
@@ -320,7 +320,6 @@ def scheduler_cli(parser, options, args, is_restart=False):
         suite_files.detect_old_contact_file(reg)
     except SuiteServiceFileError as exc:
         sys.exit(exc)
-    make_localhost_symlinks(reg)
     _check_installation(reg)
 
     # re-execute on another host if required
