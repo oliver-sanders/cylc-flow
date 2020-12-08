@@ -158,7 +158,7 @@ def make_localhost_symlinks(rund, flow_name, log_type=LOG):
                 f' \'{value}\' contains an invalid environment variable.'
                 ' Please check configuration.')
         if log_type:
-            log_type.info("Creating symlink from {src} to {dst}")
+            log_type.info(f"Creating symlink from {src} to {dst}")
         make_symlink(src, dst)
 
 

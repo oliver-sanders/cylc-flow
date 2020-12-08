@@ -139,7 +139,7 @@ class SuiteFiles:
     """Deprecated workflow configuration file."""
 
     SOURCE = 'source'
-    """Symlink to the workflow source directory (Workflow dir)"""
+    """Symlink to the workflow source directory (For workflow dir)"""
 
     class Service:
         """The directory containing Cylc system files."""
@@ -167,7 +167,7 @@ class SuiteFiles:
         """The name of this directory."""
 
         SOURCE = 'source'
-        """Symlink to the workflow definition (Run dir)."""
+        """Symlink to the workflow definition (For run dir)."""
 
 
 class ContactFileFields:
@@ -927,13 +927,13 @@ def install_workflow(flow_name=None, source=None, run_name=None,
             'Run name cannot be "_cylc-install".'
             ' Please choose another run name.')
     validate_source_dir(source)
-    basename_cwd = Path.cwd().stem
-    run_path_base = Path('~', 'cylc-run', basename_cwd).expanduser()
+    run_path_base = Path('~', 'cylc-run', flow_name).expanduser()
+    relink=False
     if no_run_name:
         rundir = run_path_base
+    elif run_name:
+        rundir = run_path_base.joinpath(run_name)
     else:
-        if run_name:
-            run_path_base = run_path_base.joinpath(run_name)
         run_n = Path(run_path_base, 'runN').expanduser()
         run_num = get_next_rundir_number(run_path_base)
         rundir = Path(run_path_base, f'run{run_num}')
@@ -941,6 +941,7 @@ def install_workflow(flow_name=None, source=None, run_name=None,
             SuiteServiceFileError(
                 f"This path: {rundir} exists. Try using --run-name")
         unlink_runN(run_n)
+        relink=True
     check_nested_run_dirs(rundir, flow_name)
     try:
         rundir.mkdir(exist_ok=False)
@@ -953,7 +954,8 @@ def install_workflow(flow_name=None, source=None, run_name=None,
     base_source_link = run_path_base.joinpath(SuiteFiles.Install.SOURCE)
     if not base_source_link.exists():
         run_path_base.joinpath(SuiteFiles.Install.SOURCE).symlink_to(source)
-    link_runN(rundir)
+    if relink:
+        link_runN(rundir)
     if not no_symlinks:
         make_localhost_symlinks(rundir, flow_name, log_type=INSTALL_LOG)
     workflow_srv_d = rundir.joinpath(SuiteFiles.Service.DIRNAME)

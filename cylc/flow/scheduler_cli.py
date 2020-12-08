@@ -34,7 +34,7 @@ from cylc.flow.option_parsers import (
 from cylc.flow.pathutil import (
     get_workflow_run_dir,
     get_suite_run_log_name,
-    get_suite_file_install_log_name, make_localhost_symlinks)
+    get_suite_file_install_log_name)
 from cylc.flow.remote import _remote_cylc_cmd
 from cylc.flow.scheduler import Scheduler, SchedulerError
 from cylc.flow.scripts import cylc_header
@@ -262,7 +262,7 @@ RestartOptions = Options(
 
 
 def _auto_install():
-    """Install a suite installed in the cylc-run directory."""
+    """Install a workflow installed in the cylc-run directory."""
     try:
         reg = suite_files.install_workflow()
     except SuiteServiceFileError as exc:
