@@ -40,7 +40,7 @@ from cylc.flow.pathutil import (
 from cylc.flow.hostuserutil import get_user, is_remote_host, is_remote_user
 from cylc.flow.loggingutil import CylcLogFormatter
 from cylc.flow.platforms import get_platform
-from cylc.flow.unicode_rules import SuiteNameValidator
+from cylc.flow.unicode_rules import SuiteNameValidator, regex_chars_to_text
 from cylc.flow.wallclock import get_current_time_string
 
 
@@ -163,7 +163,7 @@ class SuiteFiles:
     class Install:
         """The directory containing install source link."""
 
-        DIRNAME = '_cylc_install'
+        DIRNAME = '_cylc-install'
         """The name of this directory."""
 
         SOURCE = 'source'
@@ -373,8 +373,7 @@ def get_suite_source_dir(reg, suite_owner=None):
 
     Will install un-installed suites located in the cylc run dir.
     """
-    srv_d = get_suite_srv_dir(reg, suite_owner)
-    suite_d = os.path.dirname(srv_d)
+    suite_d = get_workflow_run_dir(reg)
     fname = os.path.join(suite_d, SuiteFiles.SOURCE)
     try:
         source = os.readlink(fname)
@@ -386,7 +385,7 @@ def get_suite_source_dir(reg, suite_owner=None):
         raise SuiteServiceFileError(f"Suite not found: {reg}")
     else:
         if not os.path.isabs(source):
-            source = os.path.normpath(os.path.join(srv_d, source))
+            source = os.path.normpath(fname)
         flow_file_path = os.path.join(source, SuiteFiles.FLOW_FILE)
         if not os.path.exists(flow_file_path):
             # suite exists but is probably using deprecated suite.rc
@@ -944,7 +943,7 @@ def install_workflow(flow_name=None, source=None, run_name=None,
         relink=True
     check_nested_run_dirs(rundir, flow_name)
     try:
-        rundir.mkdir(exist_ok=False)
+        rundir.mkdir(exist_ok=True)
     except OSError as e:
         if e.strerror == "File exists":
             raise SuiteServiceFileError(f"Run directory already exists : {e}")
@@ -1008,10 +1007,11 @@ def validate_source_dir(source):
             If log, share, work or _cylc-install directories exist in the
             source directory.
     """
-    # Ensure source dir does not contain log, share, work, _cylc_install
+    # Ensure source dir does not contain log, share, work, _cylc-install
     for dir_ in FORBIDDEN_SOURCE_DIR:
         path_to_check = Path(source, dir_)
         if path_to_check.exists():
+            LOG.debug(f"{dir_} exists!!!!!")
             raise SuiteServiceFileError(
                 f'Installation failed. - {dir_} exists in source directory.')
 

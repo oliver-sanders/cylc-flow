@@ -366,7 +366,7 @@ def scheduler_cli(parser, options, args, is_restart=False):
 
 
 def _check_installation(reg):
-    """Ensure the flow is installed."""
+    """Check the flow is installed."""
     suite_run_dir = get_workflow_run_dir(reg)
     if not os.path.exists(suite_run_dir):
         sys.stderr.write(f'suite service directory not found '
@@ -434,6 +434,7 @@ def restart(parser, options, *args):
 @cli_function(partial(get_option_parser, is_restart=False))
 def run(parser, options, *args):
     """Implement cylc run."""
+
     if not args:
         _auto_install()
     if options.startcp:

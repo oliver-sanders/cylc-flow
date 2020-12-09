@@ -25,7 +25,7 @@ and targeted by name REG. (Note that "cylc run" can also install workflows on
 the fly).
 
 Installation creates a workflow run directory "~/cylc-run/REG/", with a run
-directory "~/cylc-run/REG/run1" containing a "_cylc_install/source" symlink to
+directory "~/cylc-run/REG/run1" containing a "_cylc-install/source" symlink to
 the source directory.
 Any files or directories (excluding .git, .svn) from the source directory are
 copied to the new run directory.
@@ -51,7 +51,6 @@ Examples:
   # Install cats/flow.cylc
   # (with run directory ~/cylc-run/cats/paws)
   # overriding the run1, run2, run3 etc structure.
-    
   $ cylc install --run-name=paws
 
 The same workflow can be installed with multiple names; this results in
