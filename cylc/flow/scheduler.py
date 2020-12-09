@@ -295,7 +295,10 @@ class Scheduler:
             suite_files.get_suite_source_dir(self.suite)
         except SuiteServiceFileError:
             # Source path is assumed to be the run directory
-            suite_files.install_workflow(self.suite, get_workflow_run_dir(self.suite))
+            suite_files.install_workflow(
+                flow_name=self.suite,
+                source=get_workflow_run_dir(
+                    self.suite))
 
         # Create ZMQ keys
         key_housekeeping(self.suite, platform=self.options.host or 'localhost')

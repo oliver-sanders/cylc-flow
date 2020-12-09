@@ -16,7 +16,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #------------------------------------------------------------------------------
-# Test suite registration
+# Test suite installation
 
 export RND_SUITE_NAME
 export RND_SUITE_SOURCE
@@ -42,7 +42,7 @@ function purge_rnd_suite() {
 }
 
 . "$(dirname "$0")/test_header"
-set_test_number 33
+set_test_number 24
 
 # Use $SUITE_NAME and $SUITE_RUN_DIR defined by test_header
 
@@ -75,7 +75,7 @@ make_rnd_suite
 pushd "${RND_SUITE_SOURCE}" || exit 1
 run_ok "${TEST_NAME}" cylc install --no-run-name
 contains_ok "${TEST_NAME}.stdout" <<__OUT__
-REGISTERED $RND_SUITE_NAME -> ${RND_SUITE_SOURCE}
+INSTALLED $RND_SUITE_NAME -> ${RND_SUITE_SOURCE}
 __OUT__
 popd || exit 1
 purge_rnd_suite
@@ -87,7 +87,7 @@ make_rnd_suite
 pushd "${RND_SUITE_SOURCE}" || exit 1
 run_ok "${TEST_NAME}" cylc install "${RND_SUITE_NAME}" --no-run-name
 contains_ok "${TEST_NAME}.stdout" <<__OUT__
-REGISTERED ${RND_SUITE_NAME} -> ${RND_SUITE_SOURCE}
+INSTALLED ${RND_SUITE_NAME} -> ${RND_SUITE_SOURCE}
 __OUT__
 popd || exit 1
 purge_rnd_suite
@@ -96,9 +96,9 @@ purge_rnd_suite
 # Test "cylc reg REG PATH"
 TEST_NAME="${TEST_NAME_BASE}-normal"
 make_rnd_suite
-run_ok "${TEST_NAME}" cylc install "${RND_SUITE_NAME}" --directory="${RND_SUITE_SOURCE}"
+run_ok "${TEST_NAME}" cylc install --flow-name="${RND_SUITE_NAME}" --directory="${RND_SUITE_SOURCE}"
 contains_ok "${TEST_NAME}.stdout" <<__OUT__
-REGISTERED ${RND_SUITE_NAME} -> ${RND_SUITE_SOURCE}
+INSTALLED ${RND_SUITE_NAME} -> ${RND_SUITE_SOURCE}
 __OUT__
 purge_rnd_suite
 
@@ -110,49 +110,22 @@ mkdir -p "${RND_SUITE_RUNDIR}"
 cp "${RND_SUITE_SOURCE}/flow.cylc" "${RND_SUITE_RUNDIR}"
 run_ok "${TEST_NAME}" cylc install --flow-name="${RND_SUITE_NAME}" --no-run-name -C "${RND_SUITE_RUNDIR}"
 contains_ok "${TEST_NAME}.stdout" <<__OUT__
-REGISTERED ${RND_SUITE_NAME} -> ${RND_SUITE_RUNDIR}
+INSTALLED ${RND_SUITE_NAME} -> ${RND_SUITE_RUNDIR}
 __OUT__
 SOURCE="$(readlink "${RND_SUITE_RUNDIR}/.service/source")"
 run_ok "${TEST_NAME}-source" test '..' = "${SOURCE}"
 # Run it twice
-run_ok "${TEST_NAME}-2" cylc install flow-name="${RND_SUITE_NAME}" -C "${RND_SUITE_RUNDIR}" --no-run-name
+run_ok "${TEST_NAME}-2" cylc install --flow-name="${RND_SUITE_NAME}" -C "${RND_SUITE_RUNDIR}" --no-run-name
 contains_ok "${TEST_NAME}-2.stdout" <<__OUT__
-REGISTERED ${RND_SUITE_NAME} -> ${RND_SUITE_RUNDIR}
+INSTALLED ${RND_SUITE_NAME} -> ${RND_SUITE_RUNDIR}
 __OUT__
 SOURCE="$(readlink "${RND_SUITE_RUNDIR}/_cylc-install/source")"
 run_ok "${TEST_NAME}-source" test '..' = "${SOURCE}"
 purge_rnd_suite
 
-#----------------------------------------------------------------
-# Test fail "cylc reg REG PATH" where REG already points to PATH2
-TEST_NAME="${TEST_NAME_BASE}-dup1"
-make_rnd_suite
-run_ok "${TEST_NAME}" cylc install "${RND_SUITE_NAME}" "${RND_SUITE_SOURCE}"
-RND_SUITE_NAME1="${RND_SUITE_NAME}"
-RND_SUITE_SOURCE1="${RND_SUITE_SOURCE}"
-RND_SUITE_RUNDIR1="${RND_SUITE_RUNDIR}"
-make_rnd_suite
-TEST_NAME="${TEST_NAME_BASE}-dup2"
-run_fail "${TEST_NAME}" cylc install "${RND_SUITE_NAME1}" "${RND_SUITE_SOURCE}"
-contains_ok "${TEST_NAME}.stderr" <<__ERR__
-SuiteServiceFileError: the name '${RND_SUITE_NAME1}' already points to ${RND_SUITE_SOURCE1}.
-Use --redirect to re-use an existing name and run directory.
-__ERR__
-# Now force it
-TEST_NAME="${TEST_NAME_BASE}-dup3"
-run_ok "${TEST_NAME}" cylc install --redirect "${RND_SUITE_NAME1}" "${RND_SUITE_SOURCE}"
-sed -i 's/^\t//; s/^.* WARNING - /WARNING - /' "${TEST_NAME}.stderr"
-contains_ok "${TEST_NAME}.stderr" <<__ERR__
-WARNING - the name '${RND_SUITE_NAME1}' points to ${RND_SUITE_SOURCE1}.
-It will now be redirected to ${RND_SUITE_SOURCE}.
-Files in the existing ${RND_SUITE_NAME1} run directory will be overwritten.
-__ERR__
-contains_ok "${TEST_NAME}.stdout" <<__OUT__
-REGISTERED ${RND_SUITE_NAME1} -> ${RND_SUITE_SOURCE}
-__OUT__
 
 TEST_NAME="${TEST_NAME_BASE}-get-dir"
-run_ok "${TEST_NAME}" cylc get-directory "${RND_SUITE_NAME1}"
+run_ok "${TEST_NAME}" cylc get-directory "${RND_SUITE_NAME}"
 contains_ok "${TEST_NAME}.stdout" <<__ERR__
 ${RND_SUITE_SOURCE}
 __ERR__

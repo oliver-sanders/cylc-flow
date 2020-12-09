@@ -869,11 +869,13 @@ def get_rsync_rund_cmd(src, dst, restart=False):
         Return: rsync_cmd: command used for rsync.
 
     """
+
     rsync_cmd = ["rsync"]
     rsync_cmd.append("-av")
     if restart:
         rsync_cmd.append('--delete')
-    ignore_dirs = ['.git', '.svn', '.cylcignore']
+    rsync_cmd.append('--exclude=run*')
+    ignore_dirs = ['.git', '.svn','.cylcignore', 'source']
     for exclude in ignore_dirs:
         if Path(src).joinpath(exclude).exists():
             rsync_cmd.append(f"--exclude={exclude}")
@@ -910,6 +912,8 @@ def install_workflow(flow_name=None, source=None, run_name=None,
             Another suite already has this name (unless --redirect).
             Trying to install a workflow that is nested inside of another.
     """
+    # import mdb
+    # mdb.debug()
     if not source:
         source = Path.cwd()
     source = Path(source).expanduser()
@@ -992,7 +996,8 @@ def install_workflow(flow_name=None, source=None, run_name=None,
     else:
         raise SuiteServiceFileError(
             "Source directory between runs are not consistent")
-    INSTALL_LOG.info(f'INSTALLED {flow_name} -> {source}')
+    INSTALL_LOG.info(f'INSTALLED {flow_name} from {source} -> {rundir}')
+    print(f'INSTALLED {flow_name} from {source} -> {rundir}')
     _close_install_log()
     return flow_name
 
