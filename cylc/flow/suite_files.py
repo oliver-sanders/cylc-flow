@@ -28,6 +28,7 @@ from pathlib import Path
 from subprocess import PIPE, Popen
 
 import aiofiles
+from attr.setters import validate
 import zmq.auth
 from cylc.flow import LOG
 from cylc.flow.exceptions import SuiteServiceFileError, WorkflowFilesError
@@ -362,35 +363,10 @@ def get_contact_file(reg):
         get_suite_srv_dir(reg), SuiteFiles.Service.CONTACT)
 
 
-def get_flow_file(reg, suite_owner=None):
+def get_flow_file(reg):
     """Return the path of a suite's flow.cylc file."""
     return os.path.join(
-        get_suite_source_dir(reg, suite_owner), SuiteFiles.FLOW_FILE)
-
-
-def get_suite_source_dir(reg, suite_owner=None):
-    """Return the source directory path of a suite.
-
-    Will install un-installed suites located in the cylc run dir.
-    """
-    suite_d = get_workflow_run_dir(reg)
-    fname = os.path.join(suite_d, SuiteFiles.SOURCE)
-    try:
-        source = os.readlink(fname)
-    except OSError:
-        if os.path.exists(suite_d) and not is_remote_user(suite_owner):
-            # suite exists but is not yet installed
-            install_workflow(flow_name=reg, source=suite_d)
-            return suite_d
-        raise SuiteServiceFileError(f"Suite not found: {reg}")
-    else:
-        if not os.path.isabs(source):
-            source = os.path.normpath(fname)
-        flow_file_path = os.path.join(source, SuiteFiles.FLOW_FILE)
-        if not os.path.exists(flow_file_path):
-            # suite exists but is probably using deprecated suite.rc
-            install_workflow(flow_name=reg, source=source)
-        return source
+        get_workflow_run_dir(reg), SuiteFiles.FLOW_FILE)
 
 
 def get_suite_srv_dir(reg, suite_owner=None):
@@ -457,7 +433,7 @@ def parse_suite_arg(options, arg):
     if arg == '.':
         arg = os.getcwd()
     try:
-        path = get_flow_file(arg, options.suite_owner)
+        path = get_flow_file(arg)
         name = arg
     except SuiteServiceFileError:
         arg = os.path.abspath(arg)
@@ -874,15 +850,14 @@ def get_rsync_rund_cmd(src, dst, restart=False):
     rsync_cmd.append("-av")
     if restart:
         rsync_cmd.append('--delete')
-    rsync_cmd.append('--exclude=run*')
-    ignore_dirs = ['.git', '.svn','.cylcignore', 'source']
+    ignore_dirs = ['.git', '.svn','.cylcignore']
     for exclude in ignore_dirs:
         if Path(src).joinpath(exclude).exists():
             rsync_cmd.append(f"--exclude={exclude}")
     if Path(src).joinpath('.cylcignore').exists():
         rsync_cmd.append("--exclude-from=.cylcignore")
     rsync_cmd.append(f"{src}/")
-    rsync_cmd.append(f"{dst}")
+    rsync_cmd.append(f"{dst}/")
 
     return rsync_cmd
 
@@ -912,26 +887,21 @@ def install_workflow(flow_name=None, source=None, run_name=None,
             Another suite already has this name (unless --redirect).
             Trying to install a workflow that is nested inside of another.
     """
-    # import mdb
-    # mdb.debug()
     if not source:
         source = Path.cwd()
+    elif Path(source).name == SuiteFiles.FLOW_FILE:
+        source = Path(source).parent
     source = Path(source).expanduser()
     if not flow_name:
         flow_name = (Path.cwd().stem)
-    is_valid, message = SuiteNameValidator.validate(flow_name)
-    if not is_valid:
-        raise SuiteServiceFileError(f'Invalid workflow name - {message}')
-    if Path.is_absolute(Path(flow_name)):
-        raise SuiteServiceFileError(
-            f'Workflow name cannot be an absolute path: {flow_name}')
+    validate_flow_name(flow_name)
     if run_name == '_cylc-install':
         raise SuiteServiceFileError(
             'Run name cannot be "_cylc-install".'
             ' Please choose another run name.')
     validate_source_dir(source)
-    run_path_base = Path('~', 'cylc-run', flow_name).expanduser()
-    relink=False
+    run_path_base = Path(get_workflow_run_dir(flow_name)).expanduser()
+    relink = False
     if no_run_name:
         rundir = run_path_base
     elif run_name:
@@ -944,7 +914,7 @@ def install_workflow(flow_name=None, source=None, run_name=None,
             SuiteServiceFileError(
                 f"This path: {rundir} exists. Try using --run-name")
         unlink_runN(run_n)
-        relink=True
+        relink = True
     check_nested_run_dirs(rundir, flow_name)
     try:
         rundir.mkdir(exist_ok=True)
@@ -961,8 +931,7 @@ def install_workflow(flow_name=None, source=None, run_name=None,
         link_runN(rundir)
     if not no_symlinks:
         make_localhost_symlinks(rundir, flow_name, log_type=INSTALL_LOG)
-    workflow_srv_d = rundir.joinpath(SuiteFiles.Service.DIRNAME)
-    workflow_srv_d.mkdir(exist_ok=True, parents=True)
+    create_workflow_srv_dir(rundir)
     # flow.cylc must exist so we can detect accidentally reversed args.
     flow_file_path = source.joinpath(SuiteFiles.FLOW_FILE)
     if not flow_file_path.is_file():
@@ -1002,6 +971,22 @@ def install_workflow(flow_name=None, source=None, run_name=None,
     return flow_name
 
 
+def create_workflow_srv_dir(rundir=None, source=None):
+    """Create suite service directory"""
+
+    workflow_srv_d = rundir.joinpath(SuiteFiles.Service.DIRNAME)
+    workflow_srv_d.mkdir(exist_ok=True, parents=True)
+
+
+def validate_flow_name(flow_name):
+    is_valid, message = SuiteNameValidator.validate(flow_name)
+    if not is_valid:
+        raise SuiteServiceFileError(f'Invalid workflow name - {message}')
+    if Path.is_absolute(Path(flow_name)):
+        raise SuiteServiceFileError(
+            f'Workflow name cannot be an absolute path: {flow_name}')
+
+
 def validate_source_dir(source):
     """Ensure the source directory is valid.
 
@@ -1011,14 +996,22 @@ def validate_source_dir(source):
         SuiteServiceFileError:
             If log, share, work or _cylc-install directories exist in the
             source directory.
+            Cylc installing from within the cylc-run dir
     """
     # Ensure source dir does not contain log, share, work, _cylc-install
     for dir_ in FORBIDDEN_SOURCE_DIR:
         path_to_check = Path(source, dir_)
         if path_to_check.exists():
-            LOG.debug(f"{dir_} exists!!!!!")
             raise SuiteServiceFileError(
                 f'Installation failed. - {dir_} exists in source directory.')
+    cylc_run_dir = Path(
+        get_platform()['run directory'].replace('$HOME', '~')
+    ).expanduser()
+    if os.path.abspath(os.path.realpath(cylc_run_dir)
+                       ) in os.path.abspath(os.path.realpath(source)):
+        raise SuiteServiceFileError(
+            f'Installation failed. Source directory should not be in'
+            f' {cylc_run_dir}')
 
 
 def unlink_runN(run_n):
