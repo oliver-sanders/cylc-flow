@@ -847,7 +847,7 @@ def get_rsync_rund_cmd(src, dst, restart=False):
     rsync_cmd.append("-av")
     if restart:
         rsync_cmd.append('--delete')
-    ignore_dirs = ['.git', '.svn','.cylcignore']
+    ignore_dirs = ['.git', '.svn', '.cylcignore']
     for exclude in ignore_dirs:
         if Path(src).joinpath(exclude).exists():
             rsync_cmd.append(f"--exclude={exclude}")
@@ -921,7 +921,7 @@ def install_workflow(flow_name=None, source=None, run_name=None,
     if not no_symlinks:
         sub_dir = flow_name
         if run_num:
-            sub_dir += '/'+ f'run{run_num}'
+            sub_dir += '/' + f'run{run_num}'
         symlinks_created = make_localhost_symlinks(rundir, sub_dir)
     _open_install_log(rundir)
     if symlinks_created:

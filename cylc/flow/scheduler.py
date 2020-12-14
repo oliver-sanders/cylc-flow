@@ -288,7 +288,6 @@ class Scheduler:
         * Copy Python files.
 
         """
-        
         make_suite_run_tree(self.suite)
 
         # Create ZMQ keys
@@ -302,8 +301,8 @@ class Scheduler:
         # Copy local python modules from source to run directory
         for sub_dir in ["python", os.path.join("lib", "python")]:
             # TODO - eventually drop the deprecated "python" sub-dir.
-            suite_py = os.path.join(self.suite_run_dir, sub_dir) # change to rundir
-            if os.path.isdir(suite_py)):
+            suite_py = os.path.join(self.suite_run_dir, sub_dir)
+            if os.path.isdir(suite_py):
                 suite_run_py = os.path.join(self.suite_run_dir, sub_dir)
                 try:
                     rmtree(suite_run_py)
@@ -418,7 +417,7 @@ class Scheduler:
         for sub_dir in ["python", os.path.join("lib", "python")]:
             # TODO - eventually drop the deprecated "python" sub-dir.
             suite_py = os.path.join(self.suite_run_dir, sub_dir)
-            if os.path.isdir(suite_py)):
+            if os.path.isdir(suite_py):
                 suite_run_py = os.path.join(self.suite_run_dir, sub_dir)
                 try:
                     rmtree(suite_run_py)

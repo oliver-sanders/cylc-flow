@@ -67,7 +67,7 @@ def get_option_parser():
     parser = COP(__doc__,
                  argdoc=[
                      ("[REG]", "Workflow name")
-                     ])
+                 ])
 
     parser.add_option(
         "--flow-name",

@@ -144,9 +144,12 @@ def make_suite_run_tree(suite):
             LOG.debug('%s: directory created', dir_)
 
 
-def make_localhost_symlinks(rund, flow_name):
-    """Creates symlinks for any configured symlink dirs from glbl_cfg."""
-    dirs_to_symlink = get_dirs_to_symlink('localhost', flow_name)
+def make_localhost_symlinks(rund, named_sub_dir):
+    """Creates symlinks for any configured symlink dirs from glbl_cfg.
+    Args:
+        rund: the entire run directory path
+        named_sub_dir: e.g flow_name/run1 """
+    dirs_to_symlink = get_dirs_to_symlink('localhost', named_sub_dir)
     symlinks_created = {}
     for key, value in dirs_to_symlink.items():
         if key == 'run':
@@ -161,7 +164,9 @@ def make_localhost_symlinks(rund, flow_name):
                 ' Please check configuration.')
         try:
             sym_src, sym_dst = make_symlink(src, dst)
-            symlinks_created[sym_src]=sym_dst
+            # symlink info returned for logging purposes, symlinks created
+            # before logs as this dir may be a symlink.
+            symlinks_created[sym_src] = sym_dst
         except TypeError:
             pass
     return symlinks_created
@@ -243,7 +248,7 @@ def remove_dir(path):
         raise WorkflowFilesError(f"Error when symlinking '{exc}'")
 
 
-def get_next_rundir_number(run_path): 
+def get_next_rundir_number(run_path):
     """Return the new run number"""
     run_n_path = os.path.expanduser(os.path.join(run_path, "runN"))
     try:
