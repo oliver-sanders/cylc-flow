@@ -572,7 +572,7 @@ def clean(reg):
         raise WorkflowFilesError(
             'Workflow name cannot be a path that points to the cylc-run '
             'directory or above')
-    run_dir = Path(get_suite_run_dir(reg))
+    run_dir = Path(get_workflow_run_dir(reg))
     if not run_dir.is_dir():
         LOG.info(f'No workflow directory to clean at {run_dir}')
         return

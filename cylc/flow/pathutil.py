@@ -245,7 +245,6 @@ def remove_dir(path):
     else:
         LOG.info(f'Removing directory: {path}')
         rmtree(path)
-        raise WorkflowFilesError(f"Error when symlinking '{exc}'")
 
 
 def get_next_rundir_number(run_path):

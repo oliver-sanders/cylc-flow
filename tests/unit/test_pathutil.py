@@ -98,7 +98,7 @@ class TestPathutil(TestCase):
           failed.
     """
     @patch('cylc.flow.pathutil.get_platform')
-    def test_get_suite_run_dirs(self, mocked_platform):
+    def test_get_workflow_run_dirs(self, mocked_platform):
         """Usage of get_suite_run_*dir."""
         homedir = os.getenv("HOME")
         mocked = MagicMock()
