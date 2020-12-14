@@ -120,7 +120,7 @@ fi
 
 TEST_SYM="${TEST_NAME_BASE}-share/cycle-symlink-not-exists-ok"
 if [[ $(readlink "$HOME/cylc-run/${RND_SUITE_NAME}/run1/share/cycle") == \
-"$TMPDIR/$USER/cylctb_tmp_share_dir/cylc-run/${RND_SUITE_NAME}/share/cycle" ]]; then
+"$TMPDIR/${USER}/test_cylc_symlink/cylctb_tmp_share_dir/cylc-run/${RND_SUITE_NAME}/share/cycle" ]]; then
     fail "$TEST_SYM"
 else
     ok "$TEST_SYM"
@@ -129,7 +129,7 @@ fi
 for DIR in 'work' 'share' 'log'; do
     TEST_SYM="${TEST_NAME_BASE}-${DIR}-symlink-not-exists-ok"
     if [[ $(readlink "$HOME/cylc-run/${RND_SUITE_NAME}/run1/${DIR}") == \
-   "$TMPDIR/$USER/cylc-run/${RND_SUITE_NAME}/${DIR}" ]]; then
+   "$TMPDIR/${USER}/test_cylc_symlink/cylc-run/${RND_SUITE_NAME}/${DIR}" ]]; then
         fail "$TEST_SYM"
     else
         ok "$TEST_SYM"

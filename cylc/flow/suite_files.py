@@ -29,6 +29,7 @@ from subprocess import PIPE, Popen
 
 import aiofiles
 from attr.setters import validate
+from jinja2.loaders import FileSystemLoader
 import zmq.auth
 from cylc.flow import LOG
 from cylc.flow.exceptions import SuiteServiceFileError, WorkflowFilesError
@@ -803,22 +804,18 @@ def get_cylc_run_abs_path(path):
     return get_workflow_run_dir(path)
 
 
-def _open_install_log(reg, rund, is_reload=False):
+def _open_install_log(rund):
     """Open Cylc log handlers for an install."""
     time_str = get_current_time_string(
         override_use_utc=True, use_basic_format=True,
         display_sub_seconds=False
     )
-    if is_reload:
-        load_type = "reload"
-    else:
-        load_type = "install"
     rund = Path(rund).expanduser()
     log_path = Path(
         rund,
         'log',
         'install',
-        f"{time_str}-{load_type}.log")
+        f"{time_str}-install.log")
     log_parent_dir = log_path.parent
     log_parent_dir.mkdir(exist_ok=True, parents=True)
     handler = logging.FileHandler(log_path)
@@ -925,8 +922,11 @@ def install_workflow(flow_name=None, source=None, run_name=None,
         sub_dir = flow_name
         if run_num:
             sub_dir += '/'+ f'run{run_num}'
-        make_localhost_symlinks(rundir, sub_dir, log_type=None)
-    _open_install_log(flow_name, rundir)
+        symlinks_created = make_localhost_symlinks(rundir, sub_dir)
+    _open_install_log(rundir)
+    if symlinks_created:
+        for src, dst in symlinks_created.items():
+            INSTALL_LOG.info(f"Symlink created from {src} to {dst}")
     # create source symlink to be used as the basis of ensuring runs are
     # from a constistent source dir.
     base_source_link = run_path_base.joinpath(SuiteFiles.Install.SOURCE)

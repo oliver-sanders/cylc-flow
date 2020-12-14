@@ -19,6 +19,7 @@ import os
 from os.path import expandvars
 import re
 from shutil import rmtree
+from typing import Type
 
 from cylc.flow import LOG
 from cylc.flow.cfgspec.glbl_cfg import glbl_cfg
@@ -143,9 +144,10 @@ def make_suite_run_tree(suite):
             LOG.debug('%s: directory created', dir_)
 
 
-def make_localhost_symlinks(rund, flow_name, log_type=LOG):
+def make_localhost_symlinks(rund, flow_name):
     """Creates symlinks for any configured symlink dirs from glbl_cfg."""
     dirs_to_symlink = get_dirs_to_symlink('localhost', flow_name)
+    symlinks_created = {}
     for key, value in dirs_to_symlink.items():
         if key == 'run':
             dst = rund
@@ -157,9 +159,12 @@ def make_localhost_symlinks(rund, flow_name, log_type=LOG):
                 f'Unable to create symlink to {src}.'
                 f' \'{value}\' contains an invalid environment variable.'
                 ' Please check configuration.')
-        if log_type:
-            log_type.info(f"Creating symlink from {src} to {dst}")
-        make_symlink(src, dst)
+        try:
+            sym_src, sym_dst = make_symlink(src, dst)
+            symlinks_created[sym_src]=sym_dst
+        except TypeError:
+            pass
+    return symlinks_created
 
 
 def get_dirs_to_symlink(install_target, flow_name):
@@ -204,6 +209,7 @@ def make_symlink(src, dst):
     os.makedirs(os.path.dirname(dst), exist_ok=True)
     try:
         os.symlink(src, dst, target_is_directory=True)
+        return src, dst
     except Exception as exc:
         raise WorkflowFilesError(f"Error when symlinking\n{exc}")
 
@@ -237,7 +243,7 @@ def remove_dir(path):
         raise WorkflowFilesError(f"Error when symlinking '{exc}'")
 
 
-def get_next_rundir_number(run_path):
+def get_next_rundir_number(run_path): 
     """Return the new run number"""
     run_n_path = os.path.expanduser(os.path.join(run_path, "runN"))
     try:
