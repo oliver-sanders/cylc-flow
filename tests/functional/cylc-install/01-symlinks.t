@@ -24,7 +24,7 @@ if [[ -z ${TMPDIR:-} || -z ${USER:-} || $TMPDIR/$USER == "$HOME" ]]; then
     skip_all '"TMPDIR" or "USER" not defined or "TMPDIR"/"USER" is "HOME"'
 fi
 
-set_test_number 6
+set_test_number 12
 
 create_test_global_config "" "
 [symlink dirs]
@@ -57,19 +57,17 @@ function purge_rnd_suite() {
     rm -rf "${RND_SUITE_RUNDIR}"
 }
 
-# Test "cylc install" --directory given (flow in --directory)
+# Test "cylc install" ensure symlinks are created
 TEST_NAME="${TEST_NAME_BASE}-symlinks-created"
-# cd $TMPDIR/$USER/cylctb_tmp_run_dir
 make_rnd_suite
 run_ok "${TEST_NAME}" cylc install --flow-name="${RND_SUITE_NAME}" --directory="${RND_SUITE_SOURCE}"
 contains_ok "${TEST_NAME}.stdout" <<__OUT__
-INSTALLED $RND_SUITE_NAME from ${RND_SUITE_SOURCE} -> $TMPDIR/$USER/cylctb_tmp_run_dir/run1
+INSTALLED $RND_SUITE_NAME from ${RND_SUITE_SOURCE} -> ${RND_SUITE_RUNDIR}/run1
 __OUT__
-purge_rnd_suite
 
 TEST_SYM="${TEST_NAME_BASE}-share/cycle-symlink-exists-ok"
-if [[ $(readlink "$HOME/cylc-run/${SUITE_NAME}/share/cycle") == \
-"$TMPDIR/$USER/cylctb_tmp_share_dir/cylc-run/${SUITE_NAME}/share/cycle" ]]; then
+if [[ $(readlink "$HOME/cylc-run/${RND_SUITE_NAME}/run1/share/cycle") == \
+"$TMPDIR/$USER/cylctb_tmp_share_dir/cylc-run/${RND_SUITE_NAME}/run1/share/cycle" ]]; then
     ok "$TEST_SYM.localhost"
 else
     fail "$TEST_SYM.localhost"
@@ -77,10 +75,40 @@ fi
 
 for DIR in 'work' 'share' 'log'; do
     TEST_SYM="${TEST_NAME_BASE}-${DIR}-symlink-exists-ok"
-    if [[ $(readlink "$HOME/cylc-run/${SUITE_NAME}/${DIR}") == \
-   "$TMPDIR/$USER/cylc-run/${SUITE_NAME}/${DIR}" ]]; then
+    if [[ $(readlink "$HOME/cylc-run/${RND_SUITE_NAME}/run1/${DIR}") == \
+   "$TMPDIR/$USER/cylc-run/${RND_SUITE_NAME}/run1/${DIR}" ]]; then
         ok "$TEST_SYM.localhost"
     else
         fail "$TEST_SYM.localhost"
     fi
 done
+purge_rnd_suite
+
+
+
+# Test "cylc install" --no-symlink-dirs
+TEST_NAME="${TEST_NAME_BASE}-no-symlinks-created"
+make_rnd_suite
+run_ok "${TEST_NAME}" cylc install --flow-name="${RND_SUITE_NAME}" --no-symlink-dirs --directory="${RND_SUITE_SOURCE}"
+contains_ok "${TEST_NAME}.stdout" <<__OUT__
+INSTALLED $RND_SUITE_NAME from ${RND_SUITE_SOURCE} -> ${RND_SUITE_RUNDIR}/run1
+__OUT__
+
+TEST_SYM="${TEST_NAME_BASE}-share/cycle-symlink-not-exists-ok"
+if [[ $(readlink "$HOME/cylc-run/${RND_SUITE_NAME}/run1/share/cycle") == \
+"$TMPDIR/$USER/cylctb_tmp_share_dir/cylc-run/${RND_SUITE_NAME}/share/cycle" ]]; then
+    fail "$TEST_SYM.localhost"
+else
+    ok "$TEST_SYM.localhost"
+fi
+
+for DIR in 'work' 'share' 'log'; do
+    TEST_SYM="${TEST_NAME_BASE}-${DIR}-symlink-not-exists-ok"
+    if [[ $(readlink "$HOME/cylc-run/${RND_SUITE_NAME}/run1/${DIR}") == \
+   "$TMPDIR/$USER/cylc-run/${RND_SUITE_NAME}/${DIR}" ]]; then
+        fail "$TEST_SYM.localhost"
+    else
+        ok "$TEST_SYM.localhost"
+    fi
+done
+purge_rnd_suite

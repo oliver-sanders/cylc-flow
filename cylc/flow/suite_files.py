@@ -921,6 +921,11 @@ def install_workflow(flow_name=None, source=None, run_name=None,
     except OSError as e:
         if e.strerror == "File exists":
             raise SuiteServiceFileError(f"Run directory already exists : {e}")
+    if not no_symlinks:
+        sub_dir = flow_name
+        if run_num:
+            sub_dir += '/'+ f'run{run_num}'
+        make_localhost_symlinks(rundir, sub_dir, log_type=None)
     _open_install_log(flow_name, rundir)
     # create source symlink to be used as the basis of ensuring runs are
     # from a constistent source dir.
@@ -929,8 +934,6 @@ def install_workflow(flow_name=None, source=None, run_name=None,
         run_path_base.joinpath(SuiteFiles.Install.SOURCE).symlink_to(source)
     if relink:
         link_runN(rundir)
-    if not no_symlinks:
-        make_localhost_symlinks(rundir, flow_name, log_type=INSTALL_LOG)
     create_workflow_srv_dir(rundir)
     # flow.cylc must exist so we can detect accidentally reversed args.
     flow_file_path = source.joinpath(SuiteFiles.FLOW_FILE)
