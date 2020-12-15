@@ -261,11 +261,7 @@ def test_make_localhost_symlinks_calls_make_symlink_for_each_key_value_dir(
         'share': '$DEE/suite3/share'}
     mocked_get_workflow_run_dir.return_value = "rund"
     mocked_expandvars.return_value = "expanded"
-
-    try: 
-        src, dst = make_localhost_symlinks('rund', 'suite')
-    except ValueError:
-        pass
+    make_localhost_symlinks('rund', 'suite')
     mocked_make_symlink.assert_has_calls([
         call('expanded', 'rund'),
         call('expanded', 'rund/log'),

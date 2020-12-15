@@ -76,8 +76,6 @@ def get_option_parser():
 @cli_function(get_option_parser)
 def main(_, options, reg):
     """cylc validate CLI."""
-    import mdb
-    mdb.debug()
     profiler = Profiler(None, options.profile_mode)
     profiler.start()
     if not cylc.flow.flags.debug:

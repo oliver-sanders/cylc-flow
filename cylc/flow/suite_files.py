@@ -364,10 +364,36 @@ def get_contact_file(reg):
         get_suite_srv_dir(reg), SuiteFiles.Service.CONTACT)
 
 
-def get_flow_file(reg):
+def get_flow_file(reg, suite_owner=None):
     """Return the path of a suite's flow.cylc file."""
     return os.path.join(
-        get_workflow_run_dir(reg), SuiteFiles.FLOW_FILE)
+        get_suite_source_dir(reg, suite_owner), SuiteFiles.FLOW_FILE)
+
+
+def get_suite_source_dir(reg, suite_owner=None):
+    """Return the source directory path of a suite.
+
+    Will register un-registered suites located in the cylc run dir.
+    """
+    srv_d = get_suite_srv_dir(reg, suite_owner)
+    fname = os.path.join(get_workflow_run_dir(reg), SuiteFiles.SOURCE)
+    try:
+        source = os.readlink(fname)
+    except OSError:
+        suite_d = os.path.dirname(srv_d)
+        if os.path.exists(suite_d) and not is_remote_user(suite_owner):
+            # suite exists but is not yet registered
+            register(flow_name=reg, source=suite_d)
+            return suite_d
+        raise SuiteServiceFileError(f"Suite not found: {reg}")
+    else:
+        if not os.path.isabs(source):
+            source = os.path.normpath(os.path.join(srv_d, source))
+        flow_file_path = os.path.join(source, SuiteFiles.FLOW_FILE)
+        if not os.path.exists(flow_file_path):
+            # suite exists but is probably using deprecated suite.rc
+            register(flow_name=reg, source=source)
+        return source
 
 
 def get_suite_srv_dir(reg, suite_owner=None):
@@ -728,7 +754,9 @@ def check_nested_run_dirs(run_dir, flow_name):
         for result in os.scandir(path):
             if result.is_dir() and not result.is_symlink():
                 if is_valid_run_dir(result.path):
-                    raise WorkflowFilesError(exc_msg % (flow_name, result.path))
+                    raise WorkflowFilesError(
+                        exc_msg %
+                        (flow_name, result.path))
                 if depth_count < MAX_SCAN_DEPTH:
                     _check_child_dirs(result.path, depth_count + 1)
 
