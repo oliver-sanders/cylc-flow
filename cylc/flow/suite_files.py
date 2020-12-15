@@ -511,7 +511,7 @@ def register(flow_name=None, source=None):
                 f'no flow.cylc or suite.rc in {source}')
     symlinks_created = make_localhost_symlinks(
         get_workflow_run_dir(flow_name), flow_name)
-    if symlinks_created:
+    if bool(symlinks_created):
         for src, dst in symlinks_created.items():
             INSTALL_LOG.info(f"Symlink created from {src} to {dst}")
     # Create service dir if necessary.
@@ -865,6 +865,7 @@ def install_workflow(flow_name=None, source=None, run_name=None,
     validate_source_dir(source)
     run_path_base = Path(get_workflow_run_dir(flow_name)).expanduser()
     relink = False
+    run_num = int()
     if no_run_name:
         rundir = run_path_base
     elif run_name:
@@ -885,7 +886,7 @@ def install_workflow(flow_name=None, source=None, run_name=None,
             sub_dir += '/' + f'run{run_num}'
         symlinks_created = make_localhost_symlinks(rundir, sub_dir)
     _open_install_log(rundir)
-    if symlinks_created:
+    if not no_symlinks and bool(symlinks_created):
         for src, dst in symlinks_created.items():
             INSTALL_LOG.info(f"Symlink created from {src} to {dst}")
     try:

@@ -155,7 +155,7 @@ DEAD_ENDS = {
     ),
     'jobscript': 'cylc jobscript has been removed',
     'submit': 'cylc submit has been removed',
-    'register': 'cylc register had been removed, use cylc install or cylc run'
+    'register': 'cylc register had been removed, use cylc install or cylc run',
     'get-directory': 'cylc get-directory has been removed.'
 }
 
