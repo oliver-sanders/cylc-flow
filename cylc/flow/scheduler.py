@@ -82,7 +82,6 @@ from cylc.flow.subprocpool import SubProcPool
 from cylc.flow.suite_db_mgr import SuiteDatabaseManager
 from cylc.flow.suite_events import (
     SuiteEventContext, SuiteEventHandler)
-from cylc.flow.exceptions import SuiteServiceFileError
 from cylc.flow.suite_status import StopMode, AutoRestartMode
 from cylc.flow import suite_files
 from cylc.flow.taskdef import TaskDef
@@ -282,12 +281,16 @@ class Scheduler:
 
     async def install(self):
         """Get the filesystem in the right state to run the flow.
-
+        * Validate flowfiles
+        *
         * Install authentication files.
         * Build the directory tree.
         * Copy Python files.
 
         """
+        # Check if flow has been installed
+        if not suite_files.is_installed(self.suite_run_dir):
+            suite_files.register(self.suite)
         make_suite_run_tree(self.suite)
 
         # Create ZMQ keys

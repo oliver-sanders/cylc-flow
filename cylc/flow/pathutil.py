@@ -19,7 +19,6 @@ import os
 from os.path import expandvars
 import re
 from shutil import rmtree
-from typing import Type
 
 from cylc.flow import LOG
 from cylc.flow.cfgspec.glbl_cfg import glbl_cfg

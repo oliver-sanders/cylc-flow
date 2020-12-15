@@ -261,6 +261,19 @@ RestartOptions = Options(
     get_option_parser(is_restart=True, add_std_opts=True), DEFAULT_OPTS)
 
 
+def _auto_install():
+    """Register workflow installed in the cylc-run directory"""
+    try:
+        reg = suite_files.register()
+    except SuiteServiceFileError as exc:
+        sys.exit(exc)
+    # Replace this process with "cylc run REG ..." for 'ps -f'.
+    os.execv(
+        sys.argv[0],
+        [sys.argv[0]] + sys.argv[1:] + [reg]
+    )
+
+
 def _open_logs(reg, no_detach):
     """Open Cylc log handlers for a flow run."""
     if not no_detach:
@@ -354,10 +367,10 @@ def scheduler_cli(parser, options, args, is_restart=False):
 
 def _check_installation(reg):
     """Check the flow is installed."""
-    suite_run_dir = get_workflow_run_dir(reg)
-    if not os.path.exists(suite_run_dir):
+    workflow_run_dir = get_workflow_run_dir(reg)
+    if not suite_files.is_installed(workflow_run_dir):
         sys.stderr.write(f'suite service directory not found '
-                         f'at: {suite_run_dir}\n')
+                         f'at: {workflow_run_dir}\n')
         sys.exit(1)
 
 
@@ -421,7 +434,6 @@ def restart(parser, options, *args):
 @cli_function(partial(get_option_parser, is_restart=False))
 def run(parser, options, *args):
     """Implement cylc run."""
-
     if not args:
         _auto_install()
     if options.startcp:

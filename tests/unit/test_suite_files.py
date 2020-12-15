@@ -60,6 +60,7 @@ def test_is_valid_run_dir(path, expected, is_abs_path, monkeypatch):
     assert suite_files.is_valid_run_dir(path) is expected, (
         f'Is "{path}" a valid run dir?')
 
+
 @pytest.mark.parametrize(
     'run_dir',
     [
@@ -137,6 +138,7 @@ def test_rundir_children_that_do_not_contain_workflows_no_error(
     except Exception:
         pytest.fail("check_nested_run_dirs raised exception unexpectedly.")
 
+
 @pytest.mark.parametrize(
     'run_dir, srv_dir',
     [
@@ -164,6 +166,7 @@ def test_rundir_children_that_contain_workflows_raise_error(
     with pytest.raises(WorkflowFilesError) as exc:
         check_nested_run_dirs(run_dir, 'placeholder_flow')
     assert 'Nested run directories not allowed' in str(exc.value)
+
 
 @pytest.mark.parametrize(
     'reg, expected_err',
@@ -333,6 +336,7 @@ def test_remove_empty_reg_parents(tmp_path):
     suite_files._remove_empty_reg_parents(reg, path)
     assert tmp_path.joinpath('foo').exists() is False
     assert tmp_path.exists() is True
+
 
 @pytest.mark.parametrize(
     'run_dir, srv_dir',
