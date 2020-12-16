@@ -162,10 +162,10 @@ def make_localhost_symlinks(rund, named_sub_dir):
                 f' \'{value}\' contains an invalid environment variable.'
                 ' Please check configuration.')
         try:
-            sym_src, sym_dst = make_symlink(src, dst)
+            make_symlink(src, dst)
             # symlink info returned for logging purposes, symlinks created
             # before logs as this dir may be a symlink.
-            symlinks_created[sym_src] = sym_dst
+            symlinks_created[src] = dst
         except TypeError:
             pass
     return symlinks_created
@@ -213,7 +213,6 @@ def make_symlink(src, dst):
     os.makedirs(os.path.dirname(dst), exist_ok=True)
     try:
         os.symlink(src, dst, target_is_directory=True)
-        return src, dst
     except Exception as exc:
         raise WorkflowFilesError(f"Error when symlinking\n{exc}")
 

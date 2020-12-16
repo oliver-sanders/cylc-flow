@@ -383,7 +383,10 @@ def get_suite_source_dir(reg, suite_owner=None):
         suite_d = os.path.dirname(srv_d)
         if os.path.exists(suite_d) and not is_remote_user(suite_owner):
             # suite exists but is not yet registered
+           # try:
             register(flow_name=reg, source=suite_d)
+           # except WorkflowFilesError:
+           #     pass
             return suite_d
         raise SuiteServiceFileError(f"Suite not found: {reg}")
     else:
@@ -460,9 +463,13 @@ def parse_suite_arg(options, arg):
     if arg == '.':
         arg = os.getcwd()
     try:
-        path = get_flow_file(arg)
-        name = arg
-    except SuiteServiceFileError:
+        if os.path.isfile(arg):
+            name = os.path.dirname(arg)
+            path = arg
+        else:
+            name = arg
+            path = get_flow_file(arg)
+    except WorkflowFilesError:
         arg = os.path.abspath(arg)
         if os.path.isdir(arg):
             path = os.path.join(arg, SuiteFiles.FLOW_FILE)
