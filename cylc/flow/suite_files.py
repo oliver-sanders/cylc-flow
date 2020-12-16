@@ -28,8 +28,6 @@ from pathlib import Path
 from subprocess import PIPE, Popen
 
 import aiofiles
-from attr.setters import validate
-from jinja2.loaders import FileSystemLoader
 import zmq.auth
 from cylc.flow import LOG
 from cylc.flow.exceptions import SuiteServiceFileError, WorkflowFilesError
@@ -42,7 +40,7 @@ from cylc.flow.pathutil import (
 from cylc.flow.hostuserutil import get_user, is_remote_host, is_remote_user
 from cylc.flow.loggingutil import CylcLogFormatter
 from cylc.flow.platforms import get_platform
-from cylc.flow.unicode_rules import SuiteNameValidator, regex_chars_to_text
+from cylc.flow.unicode_rules import SuiteNameValidator
 from cylc.flow.wallclock import get_current_time_string
 
 
