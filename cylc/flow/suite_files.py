@@ -382,11 +382,7 @@ def get_suite_source_dir(reg, suite_owner=None):
     except OSError:
         suite_d = os.path.dirname(srv_d)
         if os.path.exists(suite_d) and not is_remote_user(suite_owner):
-            # suite exists but is not yet registered
-           # try:
             register(flow_name=reg, source=suite_d)
-           # except WorkflowFilesError:
-           #     pass
             return suite_d
         raise SuiteServiceFileError(f"Suite not found: {reg}")
     else:
