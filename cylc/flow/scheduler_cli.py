@@ -21,6 +21,7 @@ import os
 import sys
 
 from ansimarkup import parse as cparse
+from pathlib import Path
 
 from cylc.flow import LOG, RSYNC_LOG
 from cylc.flow.exceptions import SuiteServiceFileError
@@ -320,7 +321,7 @@ def scheduler_cli(parser, options, args, is_restart=False):
         suite_files.detect_old_contact_file(reg)
     except SuiteServiceFileError as exc:
         sys.exit(exc)
-    _check_installation(reg)
+    _check_srvd(reg)
 
     # re-execute on another host if required
     _distribute(options.host, is_restart)
@@ -365,10 +366,11 @@ def scheduler_cli(parser, options, args, is_restart=False):
     sys.exit(ret)
 
 
-def _check_installation(reg):
-    """Check the flow is installed."""
+def _check_srvd(reg):
+    """Check the run dir contains .service dir"""
     workflow_run_dir = get_workflow_run_dir(reg)
-    if not suite_files.is_installed(workflow_run_dir):
+    if not Path(workflow_run_dir,
+                suite_files.SuiteFiles.Service.DIRNAME).exists:
         sys.stderr.write(f'suite service directory not found '
                          f'at: {workflow_run_dir}\n')
         sys.exit(1)
