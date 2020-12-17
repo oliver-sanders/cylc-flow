@@ -56,12 +56,18 @@ sed -i '$d' "${TEST_NAME}.stdout"
 
 cmp_ok "${TEST_NAME}.stdout" << __TREE__
 ${HOME}/cylc-run/${SUITE_NAME}
+|-- _cylc-install
+|   \`-- source -> ${TEST_DIR}/${SUITE_NAME}
+|-- flow.cylc
 |-- log -> ${TEST_DIR}/${SYM_NAME}-log/cylc-run/${SUITE_NAME}/log
 |-- share -> ${TEST_DIR}/${SYM_NAME}-share/cylc-run/${SUITE_NAME}/share
+|-- source -> ${TEST_DIR}/${SUITE_NAME}
 \`-- work -> ${TEST_DIR}/${SYM_NAME}-work/cylc-run/${SUITE_NAME}/work
 
 __TREE__
 
+
+INSTALL_LOG_FILE=$(ls "${TEST_DIR}/${SYM_NAME}-log/cylc-run/${SUITE_NAME}/log/install")
 TEST_NAME="test-dir-tree-pre-clean"
 tree --charset=ascii "${TEST_DIR}/${SYM_NAME}-"* > "${TEST_NAME}.stdout"
 # Remove last line of output:
@@ -83,6 +89,8 @@ ${TEST_DIR}/${SYM_NAME}-log
         |   \`-- cylc-clean
         |       \`-- ${TEST_NAME_BASE}
         |           \`-- log
+        |               \`-- install
+        |                   \`-- ${INSTALL_LOG_FILE}
         \`-- leave-me-alone
 ${TEST_DIR}/${SYM_NAME}-run
 \`-- cylc-run
@@ -90,8 +98,12 @@ ${TEST_DIR}/${SYM_NAME}-run
         \`-- ${FUNCTIONAL_DIR}
             \`-- cylc-clean
                 \`-- ${TEST_NAME_BASE}
+                    |-- _cylc-install
+                    |   \`-- source -> ${TEST_DIR}/${SUITE_NAME}
+                    |-- flow.cylc
                     |-- log -> ${TEST_DIR}/${SYM_NAME}-log/cylc-run/${SUITE_NAME}/log
                     |-- share -> ${TEST_DIR}/${SYM_NAME}-share/cylc-run/${SUITE_NAME}/share
+                    |-- source -> ${TEST_DIR}/${SUITE_NAME}
                     \`-- work -> ${TEST_DIR}/${SYM_NAME}-work/cylc-run/${SUITE_NAME}/work
 ${TEST_DIR}/${SYM_NAME}-share
 \`-- cylc-run
