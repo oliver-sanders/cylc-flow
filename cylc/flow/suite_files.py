@@ -382,7 +382,7 @@ def get_suite_source_dir(reg, suite_owner=None):
         if os.path.exists(suite_d) and not is_remote_user(suite_owner):
             register(flow_name=reg, source=suite_d)
             return suite_d
-        raise SuiteServiceFileError(f"Suite not found: {reg}")
+        raise WorkflowFilesError(f"Suite not found: {reg}")
     else:
         if not os.path.isabs(source):
             source = os.path.normpath(os.path.join(srv_d, source))

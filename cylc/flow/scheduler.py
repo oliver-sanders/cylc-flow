@@ -42,7 +42,7 @@ from cylc.flow.cfgspec.glbl_cfg import glbl_cfg
 from cylc.flow.config import SuiteConfig
 from cylc.flow.cycling.loader import get_point
 from cylc.flow.exceptions import (
-    CylcError, SuiteConfigError, PlatformLookupError, SuiteServiceFileError
+    CylcError, SuiteConfigError, PlatformLookupError, WorkflowFilesError
 )
 import cylc.flow.flags
 from cylc.flow.host_select import select_suite_host
@@ -295,7 +295,7 @@ class Scheduler:
         # Install
         try:
             suite_files.get_suite_source_dir(self.suite)
-        except SuiteServiceFileError:
+        except WorkflowFilesError:
             # Source path is assumed to be the run directory
             suite_files.register(
                 flow_name=self.suite,
