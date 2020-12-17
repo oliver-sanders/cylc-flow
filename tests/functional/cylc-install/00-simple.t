@@ -123,7 +123,6 @@ contains_ok "${TEST_NAME}.stdout" <<__OUT__
 INSTALLED $RND_SUITE_NAME from ${RND_SUITE_SOURCE} -> ${RND_SUITE_RUNDIR}/run2
 __OUT__
 popd || exit 1
-
 purge_rnd_suite
 
 # Test -C option
