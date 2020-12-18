@@ -66,7 +66,7 @@ run_ok "log-event-handler-ret-code" \
     
 purge
 # Forcibly remove log directory
-rm -rf ${TEST_DIR}/${SUITE_NAME}/log
+rm -rf "${TEST_DIR}/${SUITE_NAME}/log"
 # REPEAT: Long STDERR output
 init_suite "${TEST_NAME_BASE}" <<__FLOW_CONFIG__
 [scheduling]
