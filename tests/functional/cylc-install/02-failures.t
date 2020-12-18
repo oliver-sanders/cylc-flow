@@ -36,8 +36,6 @@ function make_rnd_suite() {
 function purge_rnd_suite() {
     # Remove the suite source created by make_rnd_suite().
     # And remove its run-directory too.
-    RND_SUITE_SOURCE=${1:-$RND_SUITE_SOURCE}
-    RND_SUITE_RUNDIR=${2:-$RND_SUITE_RUNDIR}
     rm -rf "${RND_SUITE_SOURCE}"
     rm -rf "${RND_SUITE_RUNDIR}"
 }
@@ -93,13 +91,13 @@ done
 # Test cylc install can not be run from within the cylc-run directory
 TEST_NAME="${TEST_NAME_BASE}-forbid-cylc-run-dir-install"
 BASE_NAME="test-install-${CYLC_TEST_TIME_INIT}"
-mkdir -p ${RUN_DIR}/${BASE_NAME}/${TEST_SOURCE_DIR_BASE}/${TEST_NAME} && cd $_
+mkdir -p "${RUN_DIR}/${BASE_NAME}/${TEST_SOURCE_DIR_BASE}/${TEST_NAME}" && cd "$_"
 touch flow.cylc
 run_fail "${TEST_NAME}" cylc install
 contains_ok "${TEST_NAME}.stderr" <<__ERR__
 WorkflowFilesError: Installation failed. Source directory should not be in ${RUN_DIR}
 __ERR__
-cd ${RUN_DIR}
-rm -rf ${BASE_NAME}
+cd "${RUN_DIR}"
+rm -rf "${BASE_NAME}"
 
 exit

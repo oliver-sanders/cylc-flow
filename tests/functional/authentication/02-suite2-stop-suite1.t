@@ -32,7 +32,7 @@ cp -p "${TEST_SOURCE_DIR}/basic/flow.cylc" "${RND_SUITE_SOURCE}"
 cylc install --flow-name="${NAME1}" --no-run-name --directory="${RND_SUITE_SOURCE}"
 SUITE2_RUND="${RUND}/${NAME2}"
 mkdir -p "${SUITE2_RUND}"
-rm ${RND_SUITE_SOURCE}/flow.cylc
+rm "${RND_SUITE_SOURCE}/flow.cylc"
 cat >"${RND_SUITE_SOURCE}/flow.cylc" <<__FLOW_CONFIG__
 [scheduler]
     [[events]]
@@ -50,5 +50,5 @@ run_ok "${TEST_NAME_BASE}" cylc run --no-detach --abort-if-any-task-fails "${NAM
 cylc shutdown "${NAME1}" --max-polls=20 --interval=1 1>'/dev/null' 2>&1 || true
 purge "${NAME1}"
 purge "${NAME2}"
-rm -rf ${RND_SUITE_SOURCE}
+rm -rf "${RND_SUITE_SOURCE}"
 exit
