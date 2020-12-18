@@ -291,7 +291,7 @@ class Scheduler:
         """
         # Check if flow has been installed
         if not suite_files.is_installed(self.suite_run_dir):
-            suite_files.register(self.suite)
+            suite_files.register(self.suite, source=self.suite_run_dir)
         # Install
         try:
             suite_files.get_suite_source_dir(self.suite)

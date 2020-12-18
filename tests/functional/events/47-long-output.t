@@ -63,9 +63,8 @@ run_ok "log-event-handler-00-out" \
     grep -qF "[(('event-handler-00', 'succeeded'), 1) out]" 'log'
 run_ok "log-event-handler-ret-code" \
     grep -qF "[(('event-handler-00', 'succeeded'), 1) ret_code] 0" 'log'
-
+    
 purge
-
 # REPEAT: Long STDERR output
 
 init_suite "${TEST_NAME_BASE}" <<__FLOW_CONFIG__

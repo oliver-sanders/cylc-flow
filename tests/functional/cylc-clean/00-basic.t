@@ -67,7 +67,7 @@ ${HOME}/cylc-run/${SUITE_NAME}
 __TREE__
 
 
-INSTALL_LOG_FILE=$(ls ${TEST_DIR}/${SYM_NAME}-log/cylc-run/${SUITE_NAME}/log/install)
+INSTALL_LOG_FILE=$(ls "${TEST_DIR}/${SYM_NAME}-log/cylc-run/${SUITE_NAME}/log/install")
 TEST_NAME="test-dir-tree-pre-clean"
 tree --charset=ascii "${TEST_DIR}/${SYM_NAME}-"* > "${TEST_NAME}.stdout"
 # Remove last line of output:

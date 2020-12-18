@@ -16,7 +16,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 # Test on-the-fly suite registration by "cylc run"
 #------------------------------------------------------------------------------
-# Test `cylc run` with no registration
+# Test `cylc run` with no installation
 
 . "$(dirname "$0")/test_header"
 set_test_number 9
@@ -37,6 +37,8 @@ cat >> "${TESTD}/flow.cylc" <<'__FLOW_CONFIG__'
 __FLOW_CONFIG__
 
 cd "${TESTD}" || exit 1
+ls -la >&2
+echo ${PWD} >&2
 run_ok "${TEST_NAME}-run" cylc run --hold
 contains_ok "${TEST_NAME}-run.stdout" <<__ERR__
 INSTALLED ${TEST_NAME} from ${TESTD} -> ${PWD}
@@ -73,7 +75,7 @@ purge "${TESTD}"
 #------------------------------------------------------------------------------
 # Test `cylc run` REG for an un-registered suite
 mkdir -p "${RUN_DIR}/${TESTD}"
-cat >> "${RUN_DIR}/${TESTD}/flow.cylc" <<'__FLOW_CONFIG__'
+cat >> "${RUN_DIR}/${TESTD}/flow.cylc" <<__FLOW_CONFIG__
 [meta]
     title = the quick brown fox
 [sched]

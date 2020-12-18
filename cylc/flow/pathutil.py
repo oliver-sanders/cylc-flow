@@ -161,13 +161,10 @@ def make_localhost_symlinks(rund, named_sub_dir):
                 f'Unable to create symlink to {src}.'
                 f' \'{value}\' contains an invalid environment variable.'
                 ' Please check configuration.')
-        try:
-            make_symlink(src, dst)
-            # symlink info returned for logging purposes, symlinks created
-            # before logs as this dir may be a symlink.
-            symlinks_created[src] = dst
-        except TypeError:
-            pass
+        make_symlink(src, dst)
+        # symlink info returned for logging purposes, symlinks created
+        # before logs as this dir may be a symlink.
+        symlinks_created[src] = dst
     return symlinks_created
 
 
