@@ -58,9 +58,13 @@ multiple workflow run directories that link to the same suite definition.
 
 """
 
+import os
+import pkg_resources
+
 from cylc.flow.option_parsers import CylcOptionParser as COP
-from cylc.flow.suite_files import install_workflow
 from cylc.flow.terminal import cli_function
+from cylc.flow.pathutil import get_workflow_run_dir
+from cylc.flow.suite_files import install_workflow
 
 
 def get_option_parser():
@@ -116,14 +120,30 @@ def get_option_parser():
 def main(parser, opts, flow_name=None, src=None):
     if opts.no_run_name and opts.run_name:
         parser.error(
-            """options --no-run-name and --run-name are mutually exclusive.
+            """opts --no-run-name and --run-name are mutually exclusive.
             Use one or the other""")
-    install_workflow(
+
+    for entry_point in pkg_resources.iter_entry_points(
+        'cylc.pre_configure'
+    ):
+        entry_point.resolve()(opts.source)
+
+    flow_name = install_workflow(
         flow_name=opts.flow_name,
         source=opts.source,
         run_name=opts.run_name,
         no_run_name=opts.no_run_name,
-        no_symlinks=opts.no_symlinks)
+        no_symlinks=opts.no_symlinks
+    )
+
+    for entry_point in pkg_resources.iter_entry_points(
+        'cylc.post_install'
+    ):
+        entry_point.resolve()(
+            dir_=opts.source or os.getcwd(),
+            opts=opts,
+            dest_root=get_workflow_run_dir(flow_name)
+        )
 
 
 if __name__ == "__main__":

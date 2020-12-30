@@ -879,6 +879,7 @@ def install_workflow(flow_name=None, source=None, run_name=None,
             Illegal name (can look like a relative path, but not absolute).
             Another suite already has this name (unless --redirect).
             Trying to install a workflow that is nested inside of another.
+
     """
     if not source:
         source = Path.cwd()

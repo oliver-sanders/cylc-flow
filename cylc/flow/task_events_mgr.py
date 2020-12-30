@@ -120,8 +120,10 @@ class EventData(Enum):
     TryNum = 'try_num'
     ID = 'id'
     Message = 'message'
-    BatchSysName = 'batch_sys_name'
-    BatchSysJobID = 'batch_sys_job_id'
+    JobRunnerName_old = 'batch_sys_name'  # deprecated
+    JobRunnerName = 'job_runner_name'
+    JobID_old = 'batch_sys_job_id'  # deprecated
+    JobID = 'job_id'
     SubmitTime = 'submit_time'
     StartTime = 'start_time'
     FinishTime = 'finish_time'
@@ -524,8 +526,7 @@ class TaskEventsManager():
                 itask, ("message %s" % str(severity).lower()), message)
         lseverity = str(severity).lower()
         if lseverity in self.NON_UNIQUE_EVENTS:
-            itask.non_unique_events.setdefault(lseverity, 0)
-            itask.non_unique_events[lseverity] += 1
+            itask.non_unique_events.update({lseverity: 1})
             self.setup_event_handlers(itask, lseverity, message)
 
     def _process_message_check(
@@ -961,14 +962,14 @@ class TaskEventsManager():
                 itask,
                 itask.summary['submit_num'],
                 itask.summary['platforms_used'][itask.summary['submit_num']],
-                itask.summary['batch_sys_name'],
+                itask.summary['job_runner_name'],
                 itask.summary['submit_method_id'])
         except KeyError:
             pass
         self.suite_db_mgr.put_update_task_jobs(itask, {
             "time_submit_exit": event_time,
             "submit_status": 0,
-            "batch_sys_job_id": itask.summary.get('submit_method_id')})
+            "job_id": itask.summary.get('submit_method_id')})
 
         if itask.tdef.run_mode == 'simulation':
             # Simulate job execution at this point.
@@ -1034,7 +1035,8 @@ class TaskEventsManager():
         if event in self.NON_UNIQUE_EVENTS:
             key1 = (
                 self.HANDLER_MAIL,
-                '%s-%d' % (event, itask.non_unique_events.get(event, 1)))
+                '%s-%d' % (event, itask.non_unique_events[event] or 1)
+            )
         else:
             key1 = (self.HANDLER_MAIL, event)
         id_key = (key1, str(itask.point), itask.tdef.name, itask.submit_num)
@@ -1076,10 +1078,11 @@ class TaskEventsManager():
         for i, handler in enumerate(handlers):
             if event in self.NON_UNIQUE_EVENTS:
                 key1 = (
-                    '%s-%02d' % (self.HANDLER_CUSTOM, i),
-                    '%s-%d' % (event, itask.non_unique_events.get(event, 1)))
+                    f'{self.HANDLER_CUSTOM}-{i:02d}',
+                    f'{event}-{itask.non_unique_events[event] or 1:d}'
+                )
             else:
-                key1 = ('%s-%02d' % (self.HANDLER_CUSTOM, i), event)
+                key1 = (f'{self.HANDLER_CUSTOM}-{i:02d}', event)
             id_key = (
                 key1, str(itask.point), itask.tdef.name, itask.submit_num)
             if id_key in self._event_timers:
@@ -1094,11 +1097,12 @@ class TaskEventsManager():
             # or a command that takes 4 arguments (classic interface)
             # Note quote() fails on None, need str(None).
             try:
+                # fmt: off
                 handler_data = {
-                    EventData.BatchSysJobID.value:
+                    EventData.JobID.value:
                         quote(str(itask.summary['submit_method_id'])),
-                    EventData.BatchSysName.value:
-                        quote(str(itask.summary['batch_sys_name'])),
+                    EventData.JobRunnerName.value:
+                        quote(str(itask.summary['job_runner_name'])),
                     EventData.CyclePoint.value:
                         quote(str(itask.point)),
                     EventData.Event.value:
@@ -1125,22 +1129,35 @@ class TaskEventsManager():
                         quote(str(self.uuid_str)),
                     EventData.TryNum.value:
                         itask.get_try_num(),
+                    # BACK COMPAT: JobID_old, JobRunnerName_old
+                    # url:
+                    #     https://github.com/cylc/cylc-flow/pull/3992
+                    # from:
+                    #     Cylc < 8
+                    # remove at:
+                    #     Cylc9 - pending announcement of deprecation
+                    # next 2 (JobID_old, JobRunnerName_old) are deprecated
+                    EventData.JobID_old.value:
+                        quote(str(itask.summary['submit_method_id'])),
+                    EventData.JobRunnerName_old.value:
+                        quote(str(itask.summary['job_runner_name'])),
                     # task and suite metadata
                     **get_event_handler_data(
                         itask.tdef.rtconfig, self.suite_cfg)
                 }
+                # fmt: on
                 cmd = handler % (handler_data)
             except KeyError as exc:
-                message = "%s/%s/%02d %s bad template: %s" % (
-                    itask.point, itask.tdef.name, itask.submit_num, key1, exc)
-                LOG.error(message)
+                LOG.error(
+                    f"{itask.point}/{itask.tdef.name}/{itask.submit_num:02d} "
+                    f"{key1} bad template: {exc}")
                 continue
 
             if cmd == handler:
                 # Nothing substituted, assume classic interface
-                cmd = "%s '%s' '%s' '%s' '%s'" % (
-                    handler, event, self.suite, itask.identity, message)
-            LOG.debug("[%s] -Queueing %s handler: %s", itask, event, cmd)
+                cmd = (f"{handler} '{event}' '{self.suite}' "
+                       f"'{itask.identity}' '{message}'")
+            LOG.debug(f"[{itask}] -Queueing {event} handler: {cmd}")
             self.add_event_timer(
                 id_key,
                 TaskActionTimer(

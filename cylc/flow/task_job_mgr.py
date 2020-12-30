@@ -37,7 +37,7 @@ from shutil import rmtree
 from time import time
 
 from cylc.flow import LOG
-from cylc.flow.batch_sys_manager import JobPollContext
+from cylc.flow.job_runner_mgr import JobPollContext
 from cylc.flow.exceptions import (
     PlatformLookupError,
     SuiteConfigError,
@@ -96,17 +96,16 @@ from cylc.flow.task_remote_mgr import (
     TaskRemoteMgr
 )
 from cylc.flow.task_state import (
-    TASK_STATUS_FAILED,
     TASK_STATUS_READY,
     TASK_STATUS_RUNNING,
     TASK_STATUS_SUBMITTED,
-    TASK_STATUS_SUCCEEDED,
     TASK_STATUSES_ACTIVE
 )
 from cylc.flow.wallclock import (
     get_current_time_string,
     get_utc_mode
 )
+from cylc.flow.cfgspec.globalcfg import SYSPATH
 
 
 class TaskJobManager:
@@ -143,7 +142,7 @@ class TaskJobManager:
         self.task_events_mgr = task_events_mgr
         self.job_pool = job_pool
         self.job_file_writer = JobFileWriter()
-        self.batch_sys_mgr = self.job_file_writer.batch_sys_mgr
+        self.job_runner_mgr = self.job_file_writer.job_runner_mgr
         self.task_remote_mgr = TaskRemoteMgr(suite, proc_pool)
 
     def check_task_jobs(self, suite, task_pool):
@@ -180,35 +179,19 @@ class TaskJobManager:
             self.JOBS_KILL, suite, to_kill_tasks,
             self._kill_task_jobs_callback)
 
-    def poll_task_jobs(self, suite, itasks, poll_succ=True, msg=None):
+    def poll_task_jobs(self, suite, itasks, msg=None):
         """Poll jobs of specified tasks.
-
-        Any job that is or was submitted or running can be polled, except for
-        retrying tasks - which would poll (correctly) as failed. And don't poll
-        succeeded tasks by default.
 
         This method uses _poll_task_jobs_callback() and
         _manip_task_jobs_callback() as help/callback methods.
 
         _poll_task_job_callback() executes one specific job.
         """
-        to_poll_tasks = []
-        pollable_statuses = {
-            TASK_STATUS_SUBMITTED, TASK_STATUS_RUNNING, TASK_STATUS_FAILED
-        }
-        if poll_succ:
-            pollable_statuses.add(TASK_STATUS_SUCCEEDED)
-        for itask in itasks:
-            if itask.state(*pollable_statuses):
-                to_poll_tasks.append(itask)
-            else:
-                LOG.debug("skipping %s: not pollable, "
-                          "or skipping 'succeeded' tasks" % itask.identity)
-        if to_poll_tasks:
+        if itasks:
             if msg is not None:
                 LOG.info(msg)
             self._run_job_cmd(
-                self.JOBS_POLL, suite, to_poll_tasks,
+                self.JOBS_POLL, suite, itasks,
                 self._poll_task_jobs_callback)
 
     def prep_submit_task_jobs(self, suite, itasks, check_syntax=True):
@@ -307,8 +290,8 @@ class TaskJobManager:
             # suite host.
             host = get_host_from_platform(platform)
             if (
-                self.batch_sys_mgr.is_job_local_to_host(
-                    itask.summary['batch_sys_name']
+                self.job_runner_mgr.is_job_local_to_host(
+                    itask.summary['job_runner_name']
                 ) and
                 not is_remote_platform(platform)
             ):
@@ -326,7 +309,7 @@ class TaskJobManager:
                     'try_num': itask.get_try_num(),
                     'time_submit': now_str,
                     'platform_name': platform['name'],
-                    'batch_sys_name': itask.summary['batch_sys_name'],
+                    'job_runner_name': itask.summary['job_runner_name'],
                 })
                 itask.is_manual_submit = False
 
@@ -360,6 +343,15 @@ class TaskJobManager:
                 cmd.append('--remote-mode')
             else:
                 remote_mode = False
+            if itask.platform[
+                    'clean job submission environment']:
+                cmd.append('--clean-env')
+            for var in itask.platform[
+                    'job submission environment pass-through']:
+                cmd.append(f"--env={var}")
+            for path in itask.platform[
+                    'job submission executable paths'] + SYSPATH:
+                cmd.append(f"--path={path}")
             cmd.append('--')
             cmd.append(
                 get_remote_suite_run_job_dir(
@@ -527,7 +519,8 @@ class TaskJobManager:
             suite,
             itasks,
             self._kill_task_job_callback,
-            {self.batch_sys_mgr.OUT_PREFIX_COMMAND: self._job_cmd_out_callback}
+            {self.job_runner_mgr.OUT_PREFIX_COMMAND:
+                self._job_cmd_out_callback}
         )
 
     def _kill_task_job_callback(self, suite, itask, cmd_ctx, line):
@@ -594,7 +587,7 @@ class TaskJobManager:
             if itask.point is not None and itask.submit_num:
                 submit_num = "%02d" % (itask.submit_num)
                 tasks[(str(itask.point), itask.tdef.name, submit_num)] = itask
-        handlers = [(self.batch_sys_mgr.OUT_PREFIX_SUMMARY, summary_callback)]
+        handlers = [(self.job_runner_mgr.OUT_PREFIX_SUMMARY, summary_callback)]
         if more_callbacks:
             for prefix, callback in more_callbacks.items():
                 handlers.append((prefix, callback))
@@ -609,7 +602,7 @@ class TaskJobManager:
                     try:
                         path = line.split("|", 2)[1]  # timestamp, path, status
                         point, name, submit_num = path.split(os.sep, 2)
-                        if prefix == self.batch_sys_mgr.OUT_PREFIX_SUMMARY:
+                        if prefix == self.job_runner_mgr.OUT_PREFIX_SUMMARY:
                             del bad_tasks[(point, name, submit_num)]
                         itask = tasks[(point, name, submit_num)]
                         callback(suite, itask, ctx, line)
@@ -631,7 +624,7 @@ class TaskJobManager:
             suite,
             itasks,
             self._poll_task_job_callback,
-            {self.batch_sys_mgr.OUT_PREFIX_MESSAGE:
+            {self.job_runner_mgr.OUT_PREFIX_MESSAGE:
              self._poll_task_job_message_callback})
 
     def _poll_task_job_callback(self, suite, itask, cmd_ctx, line):
@@ -640,7 +633,7 @@ class TaskJobManager:
         ctx.out = line
         ctx.ret_code = 0
 
-        # See cylc.flow.batch_sys_manager.JobPollContext
+        # See cylc.flow.job_runner_mgr.JobPollContext
         job_d = get_task_job_id(itask.point, itask.tdef.name, itask.submit_num)
         try:
             job_log_dir, context = line.split('|')[1:3]
@@ -652,18 +645,10 @@ class TaskJobManager:
             ctx.cmd = cmd_ctx.cmd  # print original command on failure
             return
         except ValueError:
-            # back compat for cylc 7.7.1 and previous
-            try:
-                values = line.split('|')
-                items = dict(  # done this way to ensure IndexError is raised
-                    (key, values[x]) for
-                    x, key in enumerate(JobPollContext.CONTEXT_ATTRIBUTES))
-                job_log_dir = items.pop('job_log_dir')
-            except (ValueError, IndexError):
-                itask.set_summary_message(self.POLL_FAIL)
-                self.job_pool.add_job_msg(job_d, self.POLL_FAIL)
-                ctx.cmd = cmd_ctx.cmd  # print original command on failure
-                return
+            itask.set_summary_message(self.POLL_FAIL)
+            self.job_pool.add_job_msg(job_d, self.POLL_FAIL)
+            ctx.cmd = cmd_ctx.cmd  # print original command on failure
+            return
         finally:
             log_task_job_activity(ctx, suite, itask.point, itask.tdef.name)
 
@@ -672,8 +657,8 @@ class TaskJobManager:
             # Failed normally
             self.task_events_mgr.process_message(
                 itask, INFO, TASK_OUTPUT_FAILED, jp_ctx.time_run_exit, flag)
-        elif jp_ctx.run_status == 1 and jp_ctx.batch_sys_exit_polled == 1:
-            # Failed by a signal, and no longer in batch system
+        elif jp_ctx.run_status == 1 and jp_ctx.job_runner_exit_polled == 1:
+            # Failed by a signal, and no longer in job runner
             self.task_events_mgr.process_message(
                 itask, INFO, TASK_OUTPUT_FAILED, jp_ctx.time_run_exit, flag)
             self.task_events_mgr.process_message(
@@ -681,8 +666,8 @@ class TaskJobManager:
                 jp_ctx.time_run_exit,
                 flag)
         elif jp_ctx.run_status == 1:
-            # The job has terminated, but is still managed by batch system.
-            # Some batch system may restart a job in this state, so don't
+            # The job has terminated, but is still managed by job runner.
+            # Some job runners may restart a job in this state, so don't
             # mark as failed yet.
             self.task_events_mgr.process_message(
                 itask, INFO, TASK_OUTPUT_STARTED, jp_ctx.time_run, flag)
@@ -691,22 +676,22 @@ class TaskJobManager:
             self.task_events_mgr.process_message(
                 itask, INFO, TASK_OUTPUT_SUCCEEDED, jp_ctx.time_run_exit,
                 flag)
-        elif jp_ctx.time_run and jp_ctx.batch_sys_exit_polled == 1:
+        elif jp_ctx.time_run and jp_ctx.job_runner_exit_polled == 1:
             # The job has terminated without executing the error trap
             self.task_events_mgr.process_message(
                 itask, INFO, TASK_OUTPUT_FAILED, get_current_time_string(),
                 flag)
         elif jp_ctx.time_run:
-            # The job has started, and is still managed by batch system
+            # The job has started, and is still managed by job runner
             self.task_events_mgr.process_message(
                 itask, INFO, TASK_OUTPUT_STARTED, jp_ctx.time_run, flag)
-        elif jp_ctx.batch_sys_exit_polled == 1:
-            # The job never ran, and no longer in batch system
+        elif jp_ctx.job_runner_exit_polled == 1:
+            # The job never ran, and no longer in job runner
             self.task_events_mgr.process_message(
                 itask, INFO, self.task_events_mgr.EVENT_SUBMIT_FAILED,
                 jp_ctx.time_submit_exit, flag)
         else:
-            # The job never ran, and is in batch system
+            # The job never ran, and is in job runner
             self.task_events_mgr.process_message(
                 itask, INFO, TASK_STATUS_SUBMITTED, jp_ctx.time_submit_exit,
                 flag)
@@ -784,7 +769,6 @@ class TaskJobManager:
                 submit_delays = itask.platform['submission retry delays']
             # TODO: same for execution delays?
 
-        if retry:
             for key, delays in [
                     (
                         TimerFlags.SUBMISSION_RETRY,
@@ -807,7 +791,7 @@ class TaskJobManager:
         for itask in itasks:
             self._set_retry_timers(itask)
             itask.platform = 'SIMULATION'
-            itask.summary['batch_sys_name'] = 'SIMULATION'
+            itask.summary['job_runner_name'] = 'SIMULATION'
             itask.summary[self.KEY_EXECUTE_TIME_LIMIT] = (
                 itask.tdef.rtconfig['job']['simulated run length'])
             self.task_events_mgr.process_message(
@@ -821,7 +805,8 @@ class TaskJobManager:
             suite,
             itasks,
             self._submit_task_job_callback,
-            {self.batch_sys_mgr.OUT_PREFIX_COMMAND: self._job_cmd_out_callback}
+            {self.job_runner_mgr.OUT_PREFIX_COMMAND:
+                self._job_cmd_out_callback}
         )
 
     def _submit_task_job_callback(self, suite, itask, cmd_ctx, line):
@@ -846,7 +831,7 @@ class TaskJobManager:
         job_d = get_task_job_id(itask.point, itask.tdef.name, itask.submit_num)
         try:
             itask.summary['submit_method_id'] = items[3]
-            self.job_pool.set_job_attr(job_d, 'batch_sys_job_id', items[3])
+            self.job_pool.set_job_attr(job_d, 'job_id', items[3])
         except IndexError:
             itask.summary['submit_method_id'] = None
         if itask.summary['submit_method_id'] == "None":
@@ -995,7 +980,7 @@ class TaskJobManager:
             'is_manual_submit': itask.is_manual_submit,
             'try_num': itask.get_try_num(),
             'time_submit': get_current_time_string(),
-            'batch_sys_name': itask.summary.get('batch_sys_name'),
+            'job_runner_name': itask.summary.get('job_runner_name'),
         })
         itask.is_manual_submit = False
         self.task_events_mgr.process_message(
@@ -1007,7 +992,7 @@ class TaskJobManager:
         itask.summary['platforms_used'][
             itask.submit_num] = itask.platform['name']
 
-        itask.summary['batch_sys_name'] = itask.platform['batch system']
+        itask.summary['job_runner_name'] = itask.platform['job runner']
         try:
             itask.summary[self.KEY_EXECUTE_TIME_LIMIT] = float(
                 rtconfig['execution time limit'])
@@ -1023,9 +1008,9 @@ class TaskJobManager:
         job_file_path = get_remote_suite_run_job_dir(
             itask.platform, suite, job_d, JOB_LOG_JOB)
         return {
-            'batch_system_name': itask.platform['batch system'],
-            'batch_submit_command_template': (
-                itask.platform['batch submit command template']
+            'job_runner_name': itask.platform['job runner'],
+            'job_runner_command_template': (
+                itask.platform['job runner command template']
             ),
             'dependencies': itask.state.get_resolved_dependencies(),
             'directives': rtconfig['directives'],

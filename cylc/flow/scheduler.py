@@ -803,7 +803,7 @@ class Scheduler:
             if should_poll:
                 to_poll_tasks.append(itask)
         self.task_job_mgr.poll_task_jobs(
-            self.suite, to_poll_tasks, poll_succ=True)
+            self.suite, to_poll_tasks)
 
     def process_command_queue(self):
         """Process queued commands."""
@@ -916,17 +916,12 @@ class Scheduler:
             return self.pool.release_tasks(ids)
         self.release_suite()
 
-    def command_poll_tasks(self, items=None, poll_succ=False):
-        """Poll pollable tasks or a task/family if options are provided.
-
-        Don't poll succeeded tasks unless poll_succ is True.
-
-        """
+    def command_poll_tasks(self, items=None):
+        """Poll pollable tasks or a task/family if options are provided."""
         if self.config.run_mode('simulation'):
             return
         itasks, bad_items = self.pool.filter_task_proxies(items)
-        self.task_job_mgr.poll_task_jobs(self.suite, itasks,
-                                         poll_succ=poll_succ)
+        self.task_job_mgr.poll_task_jobs(self.suite, itasks)
         return len(bad_items)
 
     def command_kill_tasks(self, items=None):
@@ -1039,6 +1034,7 @@ class Scheduler:
         # Write suite contact file.
         # Preserve contact data in memory, for regular health check.
         fields = suite_files.ContactFileFields
+        # fmt: off
         contact_data = {
             fields.API:
                 str(API),
@@ -1063,6 +1059,7 @@ class Scheduler:
             fields.VERSION:
                 CYLC_VERSION
         }
+        # fmt: on
         suite_files.dump_contact_file(self.suite, contact_data)
         self.contact_data = contact_data
 
@@ -1144,7 +1141,6 @@ class Scheduler:
                 self.options.icp = value
                 LOG.info('+ initial point = %s' % value)
         elif key in self.suite_db_mgr.KEY_START_CYCLE_POINT_COMPATS:
-            # 'warm_point' for back compat <= 7.6.X
             if self.is_restart and self.options.ignore_startcp:
                 LOG.debug('- start point = %s (ignored)' % value)
             elif self.options.startcp is None:
@@ -1344,11 +1340,11 @@ class Scheduler:
             for itask in self.pool.get_tasks():
                 if (
                         itask.state(*TASK_STATUSES_ACTIVE)
-                        and itask.summary['batch_sys_name']
+                        and itask.summary['job_runner_name']
                         and not is_remote_platform(itask.platform)
-                        and self.task_job_mgr.batch_sys_mgr
+                        and self.task_job_mgr.job_runner_mgr
                         .is_job_local_to_host(
-                            itask.summary['batch_sys_name'])
+                            itask.summary['job_runner_name'])
                 ):
                     LOG.info('Waiting for jobs running on localhost to '
                              'complete before attempting restart')
