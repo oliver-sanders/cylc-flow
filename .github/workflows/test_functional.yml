@@ -18,14 +18,17 @@ jobs:
         include:
           # tests/k
           - name: 'flaky'
+            os: 'ubuntu-latest'
             test-base: 'tests/k'
             chunk: '1/1'
           # remote platforms
           - name: '_remote_background_indep_poll'
+            os: 'ubuntu-latest'
             test-base: 'tests/f tests/k'
             chunk: '1/1'
             platform: '_remote_background_indep_poll _remote_at_indep_poll'
           - name: '_remote_background_indep_tcp'
+            os: 'ubuntu-latest'
             test-base: 'tests/f tests/k'
             chunk: '1/1'
             platform: '_remote_background_indep_tcp _remote_at_indep_tcp'
