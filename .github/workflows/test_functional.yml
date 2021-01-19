@@ -5,6 +5,7 @@ on: [pull_request, workflow_dispatch]
 jobs:
   test:
     runs-on: ${{ matrix.os }}
+    name: ${{ matrix.name || matrix.chunk }}
     timeout-minutes: 40
     strategy:
       fail-fast: false
@@ -14,7 +15,6 @@ jobs:
         test-base: ['tests/f']
         chunk: ['1/4', '2/4', '3/4', '4/4']
         platform: ['_local_background* _local_at*']
-        name: ${{ matrix.chunk }}
         include:
           # tests/k
           - name: 'flaky'
@@ -38,9 +38,9 @@ jobs:
             platform: '_local_background*'
 
     env:
-      BASE: ${{ matrix.tests[0] }}
-      CHUNK: ${{ matrix.tests[1] }}
-      CYLC_TEST_PLATFORMS: ${{ matrix.tests[2] }}
+      # these vars are used by etc/bin/run-functional-tests
+      CHUNK: ${{ matrix.chunk }}
+      CYLC_TEST_PLATFORMS: ${{ matrix.platform }}
       CYLC_COVERAGE: 1
 
     steps:
@@ -123,15 +123,15 @@ jobs:
           # Use non-UTC time zone
           export TZ=XXX-05:30
 
-          if [[ "${BASE}" == 'tests/k' ]]; then
+          if [[ '${{ matrix.test-base }}' == 'tests/k' ]]; then
               NPROC=4
           else
               NPROC=8
           fi
-          # NOTE: $BASE is purposefully un-quoted
+          # NOTE: test base is purposefully un-quoted
           etc/bin/run-functional-tests \
               -j "${NPROC}" \
-              --state=save ${BASE}
+              --state=save ${{ matrix.test-base }}
 
       - name: Re-run failed tests
         timeout-minutes: 10
@@ -143,7 +143,7 @@ jobs:
           cylc scan  # is anything still running from the last run?
           etc/bin/run-functional-tests \
               -j 4 \
-              --state=save,failed ${BASE}
+              --state=save,failed ${{ matrix.test-base }}
 
       - name: Debug
         if: failure()
