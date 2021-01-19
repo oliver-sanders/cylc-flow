@@ -1,11 +1,11 @@
 name: functional tests
 
-on: [pull_request]
+on: [pull_request, workflow_dispatch]
 
 jobs:
   test:
-    runs-on: ubuntu-latest
-    timeout-minutes: 50
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 40
     strategy:
       fail-fast: false
       matrix:
@@ -106,6 +106,9 @@ jobs:
           ssh -vv _remote_background_indep_poll hostname
 
       - name: Test
+        timeout-minutes: 35
+        continue-on-error: true
+        id: functest
         run: |
           # Use non-UTC time zone
           export TZ=XXX-05:30
@@ -118,29 +121,36 @@ jobs:
           # NOTE: $BASE is purposefully un-quoted
           etc/bin/run-functional-tests \
               -j "${NPROC}" \
-              --state=save ${BASE} \
-          || (
-              echo '=== Re-running Failed Tests ==='
-              CHUNK= etc/bin/run-functional-tests \
-                  -j "${NPROC}" \
-                  --state=save,failed
-          )
+              --state=save ${BASE}
+
+      - name: Re-run failed tests
+        timeout-minutes: 10
+        if: steps.functest.conclusion == 'failure'
+        run: |
+          # give tests a second chance to pass
+          # TODO: obviously not a good strategy but necessary at the moment
+          export TZ=XXX-05:30
+          cylc scan  # is anything still running from the last run?
+          etc/bin/run-functional-tests \
+              -j 4 \
+              --state=save,failed ${BASE}
 
       - name: Debug
         if: failure()
+        timeout-minutes: 1
         run: |
           cylc scan
           find "$HOME/cylc-run" -name '*.err' -type f \
-              -exec echo '==== {} ====' \; -exec cat '{}' \;
+              -exec echo '====== {} ======' \; -exec cat '{}' \;
           find "$HOME/cylc-run" -name 'log.*' -type f \
-              -exec echo '==== {} ====' \; -exec cat '{}' \;
+              -exec echo '====== {} ======' \; -exec cat '{}' \;
           find "${TMPDIR:-/tmp}/${USER}/cylctb-"* -type f \
-              -exec echo '==== {} ====' \; -exec cat '{}' \;
+              -exec echo '====== {} ======' \; -exec cat '{}' \;
 
       - name: Copy cylc-run out of container
-        if: failure()
+        if: failure() && contains(matrix.tests[2], '_remote')
         run: |
-          docker cp bash:/root/cylc-run .
+          docker cp bash:/root/cylc-run cylc-run/${{ matrix.tests[2] }}
 
       - name: Upload
         if: failure()
