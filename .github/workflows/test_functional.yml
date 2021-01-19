@@ -11,23 +11,31 @@ jobs:
       matrix:
         os: ['ubuntu-latest']
         python-version: ['3.7']
-        tests: [
-          # local tests
-          ['tests/f', '1/4', '_local_background* _local_at*'],
-          ['tests/f', '2/4', '_local_background* _local_at*'],
-          ['tests/f', '3/4', '_local_background* _local_at*'],
-          ['tests/f', '4/4', '_local_background* _local_at*'],
-          ['tests/k', '1/1', '_local_background* _local_at*'],
-          # remote tests
-          ['tests/f tests/k', '1/1',
-           '_remote_background_indep_poll _remote_at_indep_poll'],
-          ['tests/f tests/k', '1/1',
-           '_remote_background_indep_tcp _remote_at_indep_tcp']
-        ]
+        test-base: ['tests/f']
+        chunk: ['1/4', '2/4', '3/4', '4/4']
+        platform: ['_local_background* _local_at*']
+        name: ${{ matrix.chunk }}
         include:
-          - os: 'macos-latest'
+          # tests/k
+          - name: 'flaky'
+            test-base: 'tests/k'
+            chunk: '1/1'
+          # remote platforms
+          - name: '_remote_background_indep_poll'
+            test-base: 'tests/f tests/k'
+            chunk: '1/1'
+            platform: '_remote_background_indep_poll _remote_at_indep_poll'
+          - name: '_remote_background_indep_tcp'
+            test-base: 'tests/f tests/k'
+            chunk: '1/1'
+            platform: '_remote_background_indep_tcp _remote_at_indep_tcp'
+          # macos
+          - name: 'macos'
+            os: 'macos-latest'
             python-version: '3.7'
-            tests: ['tests/f', '1/4', '_local_background*']
+            tests-base: 'tests/f'
+            chunk: '1/4'
+            platform: '_local_background*'
 
     env:
       BASE: ${{ matrix.tests[0] }}
@@ -56,10 +64,12 @@ jobs:
 
           # add GNU coreutils and sed to the user PATH
           # (see instructions in brew install output)
-          cat >> "$HOME/.bashrc" <<__HERE__
-          PATH="$(brew --prefix)/opt/coreutils/libexec/gnubin:$PATH"
-          PATH="/usr/local/opt/gnu-sed/libexec/gnubin:$PATH"
-          __HERE__
+          echo \
+            "$(brew --prefix)/opt/coreutils/libexec/gnubin" \
+            >> "${GITHUB_PATH}"
+          echo \
+            "/usr/local/opt/gnu-sed/libexec/gnubin" \
+            >> "${GITHUB_PATH}"
 
       - name: Apt-Get Install
         if: startsWith(matrix.os, 'ubuntu')
