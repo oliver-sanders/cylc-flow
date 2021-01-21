@@ -188,12 +188,19 @@ jobs:
           find "${TMPDIR:-/tmp}/${USER}/cylctb-"* -type f \
               -exec echo '====== {} ======' \; -exec cat '{}' \;
 
+      - name: Set Upload Name
+        if: failure() && steps.test.outcome == 'failure'
+        id: uploadname
+        run: |
+          # artifact name cannot contain '/' characters
+          CID="$(sed 's|/|-|g' <<< "${{ matrix.name || matrix.chunk }}")"
+          echo "::set-output name=uploadname::$CID"
+
       - name: Upload
         if: failure() && steps.test.outcome == 'failure'
         uses: actions/upload-artifact@v2
         with:
-          # NOTE: name cannot contain a '/' character
-          name: cylc-run (${{ matrix.name || matrix.chunk[0] }})
+          name: cylc-run (${{ steps.uploadname.uploadname }})
           path: ~/cylc-run/
 
       - name: Fetch Remote Coverage
