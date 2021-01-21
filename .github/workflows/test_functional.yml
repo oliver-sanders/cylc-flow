@@ -200,7 +200,7 @@ jobs:
         if: failure() && steps.test.outcome == 'failure'
         uses: actions/upload-artifact@v2
         with:
-          name: cylc-run (${{ steps.uploadname.uploadname }})
+          name: cylc-run (${{ steps.uploadname.outputs.uploadname }})
           path: ~/cylc-run/
 
       - name: Fetch Remote Coverage
