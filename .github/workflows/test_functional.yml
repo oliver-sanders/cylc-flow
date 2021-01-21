@@ -173,7 +173,7 @@ jobs:
           host="$(cut -d ' ' -f 1 <<< "${{ matrix.platform }}")"
           # copy back the remote cylc-run dir
           rsync -av \
-            "${host}:/cylc-run/" \
+            "${host}:/root/cylc-run/" \
             "${HOME}/cylc-run/${host}/"
 
       - name: Debug
