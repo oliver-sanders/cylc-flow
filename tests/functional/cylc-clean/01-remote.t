@@ -53,8 +53,7 @@ FUNCTIONAL_DIR="${TEST_SOURCE_DIR_BASE%/*}"
 
 run_ok "${TEST_NAME_BASE}-validate" cylc validate "$SUITE_NAME"
 
-suite_run_ok "${TEST_NAME_BASE}-run" cylc run "$SUITE_NAME"
-poll_suite_stopped
+suite_run_ok "${TEST_NAME_BASE}-run" cylc run "$SUITE_NAME" --no-detach
 
 # Create a fake sibling workflow dir:
 $SSH_CMD mkdir "${TEST_DIR}/${SYM_NAME}/cycle/cylc-run/${CYLC_TEST_REG_BASE}/leave-me-alone"
