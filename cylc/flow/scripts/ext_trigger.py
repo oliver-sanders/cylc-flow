@@ -41,6 +41,7 @@ from cylc.flow import LOG
 from cylc.flow.exceptions import CylcError, ClientError
 from cylc.flow.option_parsers import CylcOptionParser as COP
 from cylc.flow.network.client import SuiteRuntimeClient
+from cylc.flow.suite_files import parse_suite_arg
 from cylc.flow.terminal import cli_function
 
 
@@ -89,11 +90,11 @@ def get_option_parser():
 
 
 @cli_function(get_option_parser)
-def main(parser, options, suite, event_msg, event_id):
-    suite = os.path.normpath(suite)
-    LOG.info('Send to suite %s: "%s" (%s)', suite, event_msg, event_id)
+def main(parser, options, flow, event_msg, event_id):
+    flow = parse_suite_arg(flow)
+    LOG.info('Send to flow %s: "%s" (%s)', flow, event_msg, event_id)
 
-    pclient = SuiteRuntimeClient(suite, timeout=options.comms_timeout)
+    pclient = SuiteRuntimeClient(flow, timeout=options.comms_timeout)
 
     max_n_tries = int(options.max_n_tries)
     retry_intvl_secs = float(options.retry_intvl_secs)
@@ -101,7 +102,7 @@ def main(parser, options, suite, event_msg, event_id):
     mutation_kwargs = {
         'request_string': MUTATION,
         'variables': {
-            'wFlows': [suite],
+            'wFlows': [flow],
             'eventMsg': event_msg,
             'eventId': event_id,
         }

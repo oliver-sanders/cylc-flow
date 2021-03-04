@@ -30,10 +30,9 @@ need to trigger a queue-limited task twice to get it to submit immediately).
 
 """
 
-import os.path
-
 from cylc.flow.option_parsers import CylcOptionParser as COP
 from cylc.flow.network.client import SuiteRuntimeClient
+from cylc.flow.suite_files import parse_suite_arg
 from cylc.flow.terminal import cli_function
 
 MUTATION = '''
@@ -69,10 +68,10 @@ def get_option_parser():
 
 
 @cli_function(get_option_parser)
-def main(parser, options, suite, *task_globs):
+def main(parser, options, flow, *task_globs):
     """CLI for "cylc trigger"."""
-    suite = os.path.normpath(suite)
-    pclient = SuiteRuntimeClient(suite, timeout=options.comms_timeout)
+    flow, _ = parse_suite_arg(flow)
+    pclient = SuiteRuntimeClient(flow, timeout=options.comms_timeout)
 
     mutation_kwargs = {
         'request_string': MUTATION,

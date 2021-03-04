@@ -82,7 +82,7 @@ def get_option_parser():
 
 
 @cli_function(get_option_parser)
-def main(_, options, reg):
+def main(_, options, flow):
     """cylc validate CLI."""
     profiler = Profiler(None, options.profile_mode)
     profiler.start()
@@ -93,9 +93,9 @@ def main(_, options, reg):
             if isinstance(handler.formatter, CylcLogFormatter):
                 handler.formatter.configure(timestamp=False)
 
-    suite, flow_file = parse_suite_arg(options, reg)
+    flow, flow_file = parse_suite_arg(options, flow)
     cfg = SuiteConfig(
-        suite,
+        flow,
         flow_file,
         options,
         load_template_vars(options.templatevars, options.templatevars_file),

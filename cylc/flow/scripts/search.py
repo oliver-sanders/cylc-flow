@@ -75,8 +75,8 @@ def get_option_parser():
 
 
 @cli_function(get_option_parser)
-def main(parser, options, reg, *patterns):
-    suite, flow_file = parse_suite_arg(options, reg)
+def main(parser, options, flow, *patterns):
+    flow, flow_file = parse_suite_arg(options, flow)
 
     # cylc search SUITE PATTERN
     pattern = '|'.join(patterns)
@@ -158,10 +158,10 @@ def main(parser, options, reg, *patterns):
     if not options.search_bin:
         sys.exit(0)
 
-    # search files in suite bin directory
+    # search files in flow bin directory
     bin_ = os.path.join(suitedir, 'bin')
     if not os.path.isdir(bin_):
-        print("\nSuite " + suite + " has no bin directory", file=sys.stderr)
+        print("\nFlow " + flow + " has no bin directory", file=sys.stderr)
         sys.exit(0)
 
     for name in os.listdir(bin_):

@@ -84,8 +84,8 @@ def get_option_parser():
 
 
 @cli_function(get_option_parser)
-def main(parser, options, reg):
-    suite, flow_file = parse_suite_arg(options, reg)
+def main(parser, options, flow):
+    flow, flow_file = parse_suite_arg(options, flow)
 
     if options.all_tasks and options.all_namespaces:
         parser.error("Choose either -a or -n")
@@ -115,7 +115,7 @@ def main(parser, options, reg):
         print("WARNING: -t chosen, ignoring non-tree options.",
               file=sys.stderr)
     config = SuiteConfig(
-        suite,
+        flow,
         flow_file,
         options,
         load_template_vars(options.templatevars, options.templatevars_file))

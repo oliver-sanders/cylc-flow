@@ -22,7 +22,10 @@ Print contact information of a running suite."""
 
 from cylc.flow.exceptions import CylcError, SuiteServiceFileError
 from cylc.flow.option_parsers import CylcOptionParser as COP
-from cylc.flow.suite_files import load_contact_file
+from cylc.flow.suite_files import (
+    load_contact_file,
+    parse_suite_arg,
+)
 from cylc.flow.terminal import cli_function
 
 
@@ -31,12 +34,13 @@ def get_option_parser():
 
 
 @cli_function(get_option_parser)
-def main(parser, options, reg):
+def main(parser, options, flow):
     """CLI for "cylc get-suite-contact"."""
+    flow, _ = parse_suite_arg(flow)
     try:
-        data = load_contact_file(reg)
+        data = load_contact_file(flow)
     except SuiteServiceFileError:
-        raise CylcError(f"{reg}: cannot get contact info, suite not running?")
+        raise CylcError(f"{flow}: cannot get contact info, flow not running?")
     else:
         for key, value in sorted(data.items()):
             print("%s=%s" % (key, value))

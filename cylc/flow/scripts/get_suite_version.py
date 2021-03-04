@@ -25,6 +25,7 @@ To find the version you've invoked at the command line see "cylc version".
 
 from cylc.flow.option_parsers import CylcOptionParser as COP
 from cylc.flow.network.client import SuiteRuntimeClient
+from cylc.flow.suite_files import parse_suite_arg
 from cylc.flow.terminal import cli_function
 
 QUERY = '''
@@ -46,12 +47,13 @@ def get_option_parser():
 
 
 @cli_function(get_option_parser)
-def main(parser, options, suite):
-    pclient = SuiteRuntimeClient(suite, timeout=options.comms_timeout)
+def main(parser, options, flow):
+    flow, _ = parse_suite_arg(flow)
+    pclient = SuiteRuntimeClient(flow, timeout=options.comms_timeout)
 
     query_kwargs = {
         'request_string': QUERY,
-        'variables': {'wFlows': [suite]}
+        'variables': {'wFlows': [flow]}
     }
 
     result = pclient('graphql', query_kwargs)

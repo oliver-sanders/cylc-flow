@@ -75,24 +75,26 @@ Broadcast cannot change [runtime] inheritance.
 
 See also 'cylc reload' - reload a modified suite definition at run time."""
 
-import os.path
 import sys
 import re
 from tempfile import NamedTemporaryFile
 from ansimarkup import parse as cparse
 
 from cylc.flow import ID_DELIM
-from cylc.flow.task_id import TaskID
-from cylc.flow.terminal import cli_function
-from cylc.flow.exceptions import UserInputError
-from cylc.flow.print_tree import print_tree
-from cylc.flow.option_parsers import CylcOptionParser as COP
 from cylc.flow.broadcast_report import (
-    get_broadcast_bad_options_report, get_broadcast_change_report)
+    get_broadcast_bad_options_report,
+    get_broadcast_change_report
+)
 from cylc.flow.cfgspec.suite import SPEC, upg
+from cylc.flow.exceptions import UserInputError
 from cylc.flow.network.client import SuiteRuntimeClient
+from cylc.flow.option_parsers import CylcOptionParser as COP
 from cylc.flow.parsec.config import ParsecConfig
 from cylc.flow.parsec.validate import cylc_config_validate
+from cylc.flow.print_tree import print_tree
+from cylc.flow.suite_files import parse_suite_arg
+from cylc.flow.task_id import TaskID
+from cylc.flow.terminal import cli_function
 
 REC_ITEM = re.compile(r'^\[([^\]]*)\](.*)$')
 
@@ -293,15 +295,15 @@ def get_option_parser():
 
 
 @cli_function(get_option_parser)
-def main(_, options, suite):
+def main(_, options, flow):
     """Implement cylc broadcast."""
-    suite = os.path.normpath(suite)
-    pclient = SuiteRuntimeClient(suite, timeout=options.comms_timeout)
+    flow, _ = parse_suite_arg(flow)
+    pclient = SuiteRuntimeClient(flow, timeout=options.comms_timeout)
 
     mutation_kwargs = {
         'request_string': MUTATION,
         'variables': {
-            'wFlows': [suite],
+            'wFlows': [flow],
             'bMode': 'Set',
             'cPoints': options.point_strings,
             'nSpaces': options.namespaces,
@@ -313,7 +315,7 @@ def main(_, options, suite):
     query_kwargs = {
         'request_string': QUERY,
         'variables': {
-            'wFlows': [suite],
+            'wFlows': [flow],
             'nIds': []
         }
 

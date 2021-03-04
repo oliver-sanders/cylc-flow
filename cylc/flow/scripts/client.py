@@ -29,10 +29,11 @@ import sys
 
 from google.protobuf.json_format import MessageToDict
 
-from cylc.flow.option_parsers import CylcOptionParser as COP
 from cylc.flow.network.client import SuiteRuntimeClient
-from cylc.flow.terminal import cli_function
 from cylc.flow.network.server import PB_METHOD_MAP
+from cylc.flow.option_parsers import CylcOptionParser as COP
+from cylc.flow.suite_files import parse_suite_arg
+from cylc.flow.terminal import cli_function
 
 INTERNAL = True
 
@@ -51,8 +52,9 @@ def get_option_parser():
 
 
 @cli_function(get_option_parser)
-def main(_, options, suite, func):
-    pclient = SuiteRuntimeClient(suite, timeout=options.comms_timeout)
+def main(_, options, flow, func):
+    flow = parse_suite_arg(flow)
+    pclient = SuiteRuntimeClient(flow, timeout=options.comms_timeout)
     if options.no_input:
         kwargs = {}
     else:

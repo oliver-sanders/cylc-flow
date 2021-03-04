@@ -43,20 +43,22 @@ import pkg_resources
 
 from cylc.flow.exceptions import PluginError, WorkflowFilesError
 from cylc.flow.option_parsers import CylcOptionParser as COP
-from cylc.flow.pathutil import get_workflow_run_dir
-from cylc.flow.platforms import get_platform
 from cylc.flow.suite_files import (
+    SuiteFiles,
     get_workflow_source_dir,
-    reinstall_workflow,
-    SuiteFiles)
+    parse_suite_arg,
+    reinstall_workflow
+)
 from cylc.flow.terminal import cli_function
 
 
 def get_option_parser():
     parser = COP(
         __doc__, comms=True, prep=True,
-        argdoc=[("[NAMED_RUN]", "Named run. e.g. my-flow/run1")
-                ])
+        argdoc=[
+            ("[FLOW]", "Workflow registration e.g. my-flow/run1")
+        ]
+    )
 
     # If cylc-rose plugin is available ad the --option/-O config
     try:
@@ -109,26 +111,22 @@ def get_option_parser():
 
 
 @cli_function(get_option_parser)
-def main(parser, opts, named_run=None):
-    if not named_run:
-        source, _ = get_workflow_source_dir(Path.cwd())
-        if source is None:
-            raise WorkflowFilesError(
-                f'"{Path.cwd()}" is not a workflow run directory.')
-        base_run_dir = Path(
-            get_platform()['run directory'].replace('$HOME', '~')).expanduser()
-        named_run = Path.cwd().relative_to(Path(base_run_dir).resolve())
-    run_dir = Path(get_workflow_run_dir(named_run)).expanduser()
+def main(parser, opts, flow=None):
+    flow, run_dir = parse_suite_arg(flow, cwd=True)
+    # source, _ = get_workflow_source_dir(path)
+    # base_run_dir = Path(
+    #     get_platform()['run directory'].replace('$HOME', '~')).expanduser()
+    # flow = Path.cwd().relative_to(Path(base_run_dir).resolve())
     if not run_dir.exists():
         raise WorkflowFilesError(
-            f'\"{named_run}\" is not an installed workflow.')
+            f'\"{flow}\" is not an installed workflow.')
     if run_dir.name in [SuiteFiles.FLOW_FILE, SuiteFiles.SUITE_RC]:
         run_dir = run_dir.parent
-        named_run = named_run.rsplit('/', 1)[0]
+        flow = flow.rsplit('/', 1)[0]
     source, source_path = get_workflow_source_dir(run_dir)
     if not source:
         raise WorkflowFilesError(
-            f'\"{named_run}\" was not installed with cylc install.')
+            f'\"{flow}\" was not installed with cylc install.')
     source = Path(source)
     if not source.exists():
         raise WorkflowFilesError(
@@ -151,7 +149,7 @@ def main(parser, opts, named_run=None):
             ) from None
 
     reinstall_workflow(
-        named_run=named_run,
+        named_run=flow,
         rundir=run_dir,
         source=source,
         dry_run=False  # TODO: ready for dry run implementation

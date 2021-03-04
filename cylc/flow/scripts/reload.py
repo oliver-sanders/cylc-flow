@@ -32,10 +32,9 @@ reload (only changes to the flow.cylc file itself are reloaded).
 If the modified suite definition does not parse, failure to reload will
 be reported but no harm will be done to the running suite."""
 
-import os.path
-
 from cylc.flow.option_parsers import CylcOptionParser as COP
 from cylc.flow.network.client import SuiteRuntimeClient
+from cylc.flow.suite_files import parse_suite_arg
 from cylc.flow.terminal import cli_function
 
 MUTATION = '''
@@ -58,14 +57,14 @@ def get_option_parser():
 
 
 @cli_function(get_option_parser)
-def main(parser, options, suite):
-    suite = os.path.normpath(suite)
-    pclient = SuiteRuntimeClient(suite, timeout=options.comms_timeout)
+def main(parser, options, flow):
+    flow, _ = parse_suite_arg(flow)
+    pclient = SuiteRuntimeClient(flow, timeout=options.comms_timeout)
 
     mutation_kwargs = {
         'request_string': MUTATION,
         'variables': {
-            'wFlows': [suite],
+            'wFlows': [flow],
         }
     }
 

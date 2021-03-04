@@ -54,17 +54,18 @@ import sqlite3
 import sys
 from time import sleep
 
+from metomi.isodatetime.parsers import TimePointParser
+
+from cylc.flow.command_polling import Poller
+from cylc.flow.cycling.util import add_offset
+from cylc.flow.dbstatecheck import CylcSuiteDBChecker
 from cylc.flow.exceptions import CylcError, UserInputError
 import cylc.flow.flags
 from cylc.flow.option_parsers import CylcOptionParser as COP
-from cylc.flow.dbstatecheck import CylcSuiteDBChecker
-from cylc.flow.command_polling import Poller
+from cylc.flow.platforms import get_platform
+from cylc.flow.suite_files import parse_suite_arg
 from cylc.flow.task_state import TASK_STATUSES_ORDERED
 from cylc.flow.terminal import cli_function
-from cylc.flow.cycling.util import add_offset
-from cylc.flow.platforms import get_platform
-
-from metomi.isodatetime.parsers import TimePointParser
 
 
 class SuitePoller(Poller):
@@ -182,7 +183,9 @@ def get_option_parser():
 
 
 @cli_function(get_option_parser, remove_opts=["--db"])
-def main(parser, options, suite):
+def main(parser, options, flow):
+    flow, _ = parse_suite_arg(flow)
+
     if options.use_task_point and options.cycle:
         raise UserInputError(
             "cannot specify a cycle point and use environment variable")
@@ -225,7 +228,7 @@ def main(parser, options, suite):
         )
     )
 
-    pollargs = {'suite': suite,
+    pollargs = {'suite': flow,
                 'run_dir': run_dir,
                 'task': options.task,
                 'cycle': options.cycle,

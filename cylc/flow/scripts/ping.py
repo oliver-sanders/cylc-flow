@@ -33,6 +33,7 @@ import cylc.flow.flags
 from cylc.flow.option_parsers import CylcOptionParser as COP
 from cylc.flow.task_id import TaskID
 from cylc.flow.network.client import SuiteRuntimeClient
+from cylc.flow.suite_files import parse_suite_arg
 from cylc.flow.task_state import TASK_STATUS_RUNNING
 from cylc.flow.terminal import cli_function
 
@@ -66,15 +67,16 @@ def get_option_parser():
 
 
 @cli_function(get_option_parser)
-def main(parser, options, suite, task_id=None):
-    pclient = SuiteRuntimeClient(suite, timeout=options.comms_timeout)
+def main(parser, options, flow, task_id=None):
+    flow, _ = parse_suite_arg(flow)
+    pclient = SuiteRuntimeClient(flow, timeout=options.comms_timeout)
 
     if task_id and not TaskID.is_valid_id(task_id):
         raise UserInputError("Invalid task ID: %s" % task_id)
 
     flow_kwargs = {
         'request_string': FLOW_QUERY,
-        'variables': {'wFlows': [suite]}
+        'variables': {'wFlows': [flow]}
     }
     task_kwargs = {
         'request_string': TASK_QUERY,

@@ -33,6 +33,7 @@ from cylc.flow.exceptions import ClientError
 from cylc.flow.option_parsers import CylcOptionParser as COP
 from cylc.flow.network import get_location
 from cylc.flow.network.subscriber import WorkflowSubscriber, process_delta_msg
+from cylc.flow.suite_files import parse_suite_arg
 from cylc.flow.terminal import cli_function
 from cylc.flow.data_store_mgr import DELTAS_MAP
 
@@ -81,13 +82,13 @@ def get_option_parser():
 
 
 @cli_function(get_option_parser)
-def main(_, options, *args):
-    suite = args[0]
+def main(_, options, flow, *args):
+    flow, _ = parse_suite_arg(flow)
 
     try:
         while True:
             try:
-                host, _, port = get_location(suite)
+                host, _, port = get_location(flow)
             except (ClientError, IOError, TypeError, ValueError) as exc:
                 print(exc)
                 time.sleep(3)
@@ -103,7 +104,7 @@ def main(_, options, *args):
         topic_set.add(topic.encode('utf-8'))
 
     subscriber = WorkflowSubscriber(
-        suite,
+        flow,
         host=host,
         port=port,
         topics=topic_set

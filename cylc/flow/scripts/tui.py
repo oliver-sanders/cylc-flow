@@ -30,6 +30,7 @@ from textwrap import indent
 from urwid import html_fragment
 
 from cylc.flow.option_parsers import CylcOptionParser as COP
+from cylc.flow.suite_files import parse_suite_arg
 from cylc.flow.terminal import cli_function
 from cylc.flow.tui import (
     TUI
@@ -79,7 +80,8 @@ def get_option_parser():
 
 
 @cli_function(get_option_parser)
-def main(_, options, reg):
+def main(_, options, flow):
+    flow, _ = parse_suite_arg(flow)
     screen = None
     if options.display == 'html':
         TREE_EXPAND_DEPTH[0] = -1  # expand tree fully
@@ -92,7 +94,7 @@ def main(_, options, reg):
         )
 
     try:
-        TuiApp(reg, screen=screen).main()
+        TuiApp(flow, screen=screen).main()
 
         if options.display == 'html':
             for fragment in html_fragment.screenshot_collect():

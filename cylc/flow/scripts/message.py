@@ -76,6 +76,7 @@ import sys
 
 import cylc.flow.flags
 from cylc.flow.option_parsers import CylcOptionParser as COP
+from cylc.flow.suite_files import parse_suite_arg
 from cylc.flow.task_message import record_messages
 from cylc.flow.terminal import cli_function
 from cylc.flow.exceptions import UserInputError
@@ -113,11 +114,12 @@ def main(parser, options, *args):
         #     9.0?
         # (As of Dec 2020 some functional tests still use the classic
         # two arg interface)
-        suite = os.getenv('CYLC_SUITE_NAME')
+        flow = os.getenv('CYLC_SUITE_NAME')
         task_job = os.getenv('CYLC_TASK_JOB')
         message_strs = list(args)
     else:
-        suite, task_job, *message_strs = args
+        flow, task_job, *message_strs = args
+        flow, _ = parse_suite_arg(flow)
     # Read messages from STDIN
     if '-' in message_strs:
         current_message_str = ''
@@ -152,7 +154,7 @@ def main(parser, options, *args):
             messages.append([options.severity, message_str.strip()])
         else:
             messages.append([getLevelName(INFO), message_str.strip()])
-    record_messages(suite, task_job, messages)
+    record_messages(flow, task_job, messages)
 
 
 if __name__ == '__main__':

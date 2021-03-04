@@ -449,8 +449,21 @@ async def load_contact_file_async(reg, run_dir=None):
         raise SuiteServiceFileError("Couldn't load contact file")
 
 
-def parse_suite_arg(options, arg):
+def parse_suite_arg(
+    arg: Optional[str] = None,
+    *,
+    src: bool = False,
+    cwd: bool = False
+) -> Tuple[str, str]:
     """From CLI arg "SUITE", return suite name and flow.cylc path.
+
+    Args:
+        flow:
+            CLI argument identifying a workflow.
+        src:
+            If True "flow" can be a path to a flow.cylc file.
+        cwd:
+            If True "flow" can be omitted, cwd will be used.
 
     * If arg is an installed suite, suite name is the installed name.
     * If arg is a directory, suite name is the base name of the
@@ -458,6 +471,30 @@ def parse_suite_arg(options, arg):
     * If arg is a file, suite name is the base name of its container
       directory.
     """
+    if not arg or arg == '.':
+        # use $PWD
+        if cwd:
+            arg = os.getcwd()
+            # TODO: check this is relative to cylc-run unless src=True
+        else:
+            raise Exception()
+
+    if src:
+        if os.path.isfile(arg):
+            # path to a flow.cylc file?
+            name = os.path.dirname(arg)
+            path = os.path.abspath(arg)
+
+
+    run_dir = get_workflow_run_dir(reg)
+    check_flow_file(run_dir, LOG)
+    flow_file = os.path.join(run_dir, SuiteFiles.FLOW_FILE)
+    if os.path.exists(flow_file):
+        return flow_file
+
+
+    # ---
+
     if arg == '.':
         arg = os.getcwd()
     if os.path.isfile(arg):

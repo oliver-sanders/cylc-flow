@@ -116,8 +116,8 @@ def get_option_parser():
 
 
 @cli_function(get_option_parser)
-def main(parser, options, reg):
-    suite, flow_file = parse_suite_arg(options, reg)
+def main(parser, options, flow):
+    flow, flow_file = parse_suite_arg(flow, options, source=True)
 
     if options.geditor:
         editor = glbl_cfg().get(['editors', 'gui'])

@@ -58,6 +58,7 @@ from cylc.flow.exceptions import CylcError
 from cylc.flow.option_parsers import CylcOptionParser as COP
 from cylc.flow.pathutil import get_suite_run_pub_db_name
 from cylc.flow.rundb import CylcSuiteDAO
+from cylc.flow.suite_files import parse_suite_arg
 from cylc.flow.terminal import cli_function
 
 
@@ -110,7 +111,8 @@ def get_option_parser():
 
 
 @cli_function(get_option_parser)
-def main(parser, options, suite):
+def main(parser, options, flow):
+    flow, _ = parse_suite_arg(flow)
     output_options = [
         options.show_raw, options.show_summary, options.html_summary
     ]
@@ -120,7 +122,7 @@ def main(parser, options, suite):
         # No output specified - choose summary by default
         options.show_summary = True
 
-    run_db = _get_dao(suite)
+    run_db = _get_dao(flow)
     row_buf = format_rows(*run_db.select_task_times())
 
     with smart_open(options.output_filename) as output:

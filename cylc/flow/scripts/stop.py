@@ -38,13 +38,13 @@ poll and kill commands, however, will be executed prior to shutdown, unless
 This command exits immediately unless --max-polls is greater than zero, in
 which case it polls to wait for suite shutdown."""
 
-import os.path
 import sys
 
 from cylc.flow.command_polling import Poller
 from cylc.flow.exceptions import ClientError, ClientTimeout
 from cylc.flow.network.client import SuiteRuntimeClient
 from cylc.flow.option_parsers import CylcOptionParser as COP
+from cylc.flow.suite_files import parse_suite_arg
 from cylc.flow.task_id import TaskID
 from cylc.flow.terminal import cli_function
 
@@ -142,7 +142,9 @@ def get_option_parser():
 
 
 @cli_function(get_option_parser)
-def main(parser, options, suite, shutdown_arg=None):
+def main(parser, options, flow, shutdown_arg=None):
+    flow, _ = parse_suite_arg(flow)
+
     if shutdown_arg is not None and options.kill:
         parser.error("ERROR: --kill is not compatible with [STOP]")
 
@@ -152,8 +154,7 @@ def main(parser, options, suite, shutdown_arg=None):
     if options.flow_label and int(options.max_polls) > 0:
         parser.error("ERROR: --flow is not compatible with --max-polls")
 
-    suite = os.path.normpath(suite)
-    pclient = SuiteRuntimeClient(suite, timeout=options.comms_timeout)
+    pclient = SuiteRuntimeClient(flow, timeout=options.comms_timeout)
 
     if int(options.max_polls) > 0:
         # (test to avoid the "nothing to do" warning for # --max-polls=0)
@@ -180,7 +181,7 @@ def main(parser, options, suite, shutdown_arg=None):
     mutation_kwargs = {
         'request_string': MUTATION,
         'variables': {
-            'wFlows': [suite],
+            'wFlows': [flow],
             'stopMode': mode,
             'cyclePoint': cycle_point,
             'clockTime': options.wall_clock,

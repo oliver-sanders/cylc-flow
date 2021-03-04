@@ -39,7 +39,11 @@ from cylc.flow import LOG
 from cylc.flow.loggingutil import CylcLogFormatter
 from cylc.flow.option_parsers import CylcOptionParser as COP
 from cylc.flow.terminal import cli_function
-from cylc.flow.suite_files import clean, init_clean
+from cylc.flow.suite_files import (
+    clean,
+    init_clean,
+    parse_suite_arg
+)
 
 
 def get_option_parser():
@@ -65,7 +69,9 @@ def get_option_parser():
 
 
 @cli_function(get_option_parser)
-def main(parser, opts, reg):
+def main(parser, opts, flow):
+    flow, _ = parse_suite_arg(flow)
+
     if not cylc.flow.flags.debug:
         # for readability omit timestamps from logging unless in debug mode
         for handler in LOG.handlers:
@@ -73,9 +79,9 @@ def main(parser, opts, reg):
                 handler.formatter.configure(timestamp=False)
 
     if opts.local_only:
-        clean(reg)
+        clean(flow)
     else:
-        init_clean(reg, opts)
+        init_clean(flow, opts)
 
 
 if __name__ == "__main__":

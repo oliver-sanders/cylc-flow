@@ -25,11 +25,10 @@ example, if you choose WARNING, only warnings and critical messages will be
 logged.
 """
 
-import os.path
-
 from cylc.flow import LOG_LEVELS
 from cylc.flow.option_parsers import CylcOptionParser as COP
 from cylc.flow.network.client import SuiteRuntimeClient
+from cylc.flow.suite_files import parse_suite_arg
 from cylc.flow.terminal import cli_function
 
 MUTATION = '''
@@ -60,19 +59,19 @@ def get_option_parser():
 
 
 @cli_function(get_option_parser)
-def main(parser, options, suite, severity_str):
+def main(parser, options, flow, severity_str):
+    flow, _ = parse_suite_arg(flow)
     try:
         severity = LOG_LEVELS[severity_str]
     except KeyError:
         parser.error("Illegal logging level, %s" % severity_str)
 
-    suite = os.path.normpath(suite)
-    pclient = SuiteRuntimeClient(suite, timeout=options.comms_timeout)
+    pclient = SuiteRuntimeClient(flow, timeout=options.comms_timeout)
 
     mutation_kwargs = {
         'request_string': MUTATION,
         'variables': {
-            'wFlows': [suite],
+            'wFlows': [flow],
             'level': severity,
         }
     }

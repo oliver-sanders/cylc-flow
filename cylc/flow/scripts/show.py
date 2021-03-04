@@ -36,6 +36,7 @@ from ansimarkup import ansiprint
 from cylc.flow import ID_DELIM
 from cylc.flow.option_parsers import CylcOptionParser as COP
 from cylc.flow.network.client import SuiteRuntimeClient
+from cylc.flow.suite_files import parse_suite_arg
 from cylc.flow.task_id import TaskID
 from cylc.flow.terminal import cli_function
 
@@ -154,18 +155,19 @@ def get_option_parser():
 
 
 @cli_function(get_option_parser)
-def main(_, options, suite, *task_args):
+def main(_, options, flow, *task_args):
     """Implement "cylc show" CLI."""
-    pclient = SuiteRuntimeClient(suite, timeout=options.comms_timeout)
+    pclient = SuiteRuntimeClient(flow, timeout=options.comms_timeout)
+    flow, _ = parse_suite_arg(flow)
     json_filter = {}
 
     if not task_args:
         query = WORKFLOW_META_QUERY
         query_kwargs = {
             'request_string': query,
-            'variables': {'wFlows': [suite]}
+            'variables': {'wFlows': [flow]}
         }
-        # Print suite info.
+        # Print flow info.
         results = pclient('graphql', query_kwargs)
         for workflow in results['workflows']:
             flat_data = flatten_data(workflow)
@@ -183,9 +185,9 @@ def main(_, options, suite, *task_args):
         tasks_query = TASK_META_QUERY
         tasks_kwargs = {
             'request_string': tasks_query,
-            'variables': {'wFlows': [suite], 'taskIds': task_names}
+            'variables': {'wFlows': [flow], 'taskIds': task_names}
         }
-        # Print suite info.
+        # Print flow info.
         results = pclient('graphql', tasks_kwargs)
         multi = len(results['tasks']) > 1
         for task in results['tasks']:
@@ -204,7 +206,7 @@ def main(_, options, suite, *task_args):
         tp_kwargs = {
             'request_string': tp_query,
             'variables': {
-                'wFlows': [suite],
+                'wFlows': [flow],
                 'taskIds': [
                     f'{c}{ID_DELIM}{n}'
                     for n, c in [

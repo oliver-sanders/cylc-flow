@@ -42,6 +42,7 @@ from graphene.utils.str_converters import to_snake_case
 from cylc.flow.exceptions import CylcError
 from cylc.flow.option_parsers import CylcOptionParser as COP
 from cylc.flow.network.client import SuiteRuntimeClient
+from cylc.flow.suite_files import parse_suite_arg
 from cylc.flow.terminal import cli_function
 
 TASK_SUMMARY_FRAGMENT = '''
@@ -166,8 +167,9 @@ def get_option_parser():
 
 
 @cli_function(get_option_parser)
-def main(_, options, suite):
-    pclient = SuiteRuntimeClient(suite, timeout=options.comms_timeout)
+def main(_, options, flow):
+    flow, _ = parse_suite_arg(flow)
+    pclient = SuiteRuntimeClient(flow, timeout=options.comms_timeout)
 
     if options.sort_by_cycle:
         sort_args = {'keys': ['cyclePoint', 'name']}
@@ -211,7 +213,7 @@ def main(_, options, suite):
 
     query_kwargs = {
         'request_string': query,
-        'variables': {'wFlows': [suite], 'sortBy': sort_args}
+        'variables': {'wFlows': [flow], 'sortBy': sort_args}
     }
 
     workflows = pclient('graphql', query_kwargs)

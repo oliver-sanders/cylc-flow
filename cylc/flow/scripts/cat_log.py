@@ -79,6 +79,7 @@ from cylc.flow.task_job_logs import (
     JOB_LOG_OUT, JOB_LOG_ERR, JOB_LOG_OPTS, NN, JOB_LOG_ACTIVITY)
 from cylc.flow.terminal import cli_function
 from cylc.flow.platforms import get_platform
+from cylc.flow.suite_files import parse_suite_arg
 
 
 # Immortal tail-follow processes on job hosts can be cleaned up by killing
@@ -333,7 +334,7 @@ def main(parser, options, *args, color=False):
             sys.exit(res)
         return
 
-    suite_name = args[0]
+    flow = parse_suite_arg(args[0])
     # Get long-format mode.
     try:
         mode = MODES[options.mode]
@@ -345,7 +346,7 @@ def main(parser, options, *args, color=False):
         if options.filename is not None:
             raise UserInputError("The '-f' option is for job logs only.")
 
-        logpath = get_suite_run_log_name(suite_name)
+        logpath = get_suite_run_log_name(flow)
         if options.rotation_num:
             logs = glob('%s.*' % logpath)
             logs.sort(key=os.path.getmtime, reverse=True)
@@ -389,7 +390,7 @@ def main(parser, options, *args, color=False):
                 # Is already long form (standard log, or custom).
                 pass
         platform_name, job_runner_name, live_job_id = get_task_job_attrs(
-            suite_name, point, task, options.submit_num)
+            flow, point, task, options.submit_num)
         platform = get_platform(platform_name)
         batchview_cmd = None
         if live_job_id is not None:
@@ -423,7 +424,7 @@ def main(parser, options, *args, color=False):
         if log_is_remote and (not log_is_retrieved or options.force_remote):
             logpath = os.path.normpath(get_remote_suite_run_job_dir(
                 platform,
-                suite_name, point, task, options.submit_num, options.filename))
+                flow, point, task, options.submit_num, options.filename))
             tail_tmpl = platform["tail command template"]
             # Reinvoke the cat-log command on the remote account.
             cmd = ['cat-log']
@@ -433,7 +434,7 @@ def main(parser, options, *args, color=False):
                 cmd.append('--remote-arg=%s' % quote(item))
             if batchview_cmd:
                 cmd.append('--remote-arg=%s' % quote(batchview_cmd))
-            cmd.append(suite_name)
+            cmd.append(flow)
             is_edit_mode = (mode == 'edit')
             try:
                 proc = remote_cylc_cmd(
@@ -459,7 +460,7 @@ def main(parser, options, *args, color=False):
         else:
             # Local task job or local job log.
             logpath = os.path.normpath(get_suite_run_job_dir(
-                suite_name, point, task, options.submit_num, options.filename))
+                flow, point, task, options.submit_num, options.filename))
             tail_tmpl = os.path.expandvars(platform["tail command template"])
             out = view_log(logpath, mode, tail_tmpl, batchview_cmd,
                            color=color)
