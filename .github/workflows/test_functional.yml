@@ -67,6 +67,21 @@ jobs:
       REMOTE_PLATFORM: ${{ contains(matrix.platform, '_remote') }}
 
     steps:
+      - name: DNS test 1
+        run: |
+          for i in $(seq 1 10); do
+            echo -n 'hostname:             '
+            hostname
+            echo -n 'hostname -f:          '
+            hostname -f
+            echo -n 'hostname -A:          '
+            hostname -A
+            echo -n 'socket.gethostname(): '
+            python -c 'import socket; print(socket.gethostname())'
+            echo -n 'socket.getfqdn():     '
+            python -c 'import socket; print(socket.getfqdn())'
+          done
+
       - name: Checkout
         uses: actions/checkout@v2
         with:
@@ -188,6 +203,22 @@ jobs:
           cylc scan --state=all --format=rich --color-blind
           # fail the workflow
           false
+
+      - name: DNS test 2
+        if: steps.test.outcome == 'failure' && steps.test.outputs.finished != 'true'
+        run: |
+          for i in $(seq 1 10); do
+            echo -n 'hostname:             '
+            hostname
+            echo -n 'hostname -f:          '
+            hostname -f
+            echo -n 'hostname -A:          '
+            hostname -A
+            echo -n 'socket.gethostname(): '
+            python -c 'import socket; print(socket.gethostname())'
+            echo -n 'socket.getfqdn():     '
+            python -c 'import socket; print(socket.getfqdn())'
+          done
 
       - name: Re-run failed tests
         timeout-minutes: 10
