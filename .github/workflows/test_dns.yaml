@@ -27,6 +27,8 @@ jobs:
               'socket.gethostname()',
               'socket.getfqdn()',
               'socket.gethostbyname(socket.gethostname())',
-              'socket.gethostbyname_ex(socket.gethostname())'
+              'socket.gethostbyname_ex(socket.gethostname())',
+              'socket.gethostbyname(socket.getfqdn())',
+              'socket.gethostbyname_ex(socket.getfqdn())'
           ):
               print(f'{expr:50}: {eval(expr)}')
