@@ -26,6 +26,8 @@ jobs:
           for expr in (
               'socket.gethostname()',
               'socket.getfqdn()',
+              'socket.getfqdn(socket.gethostname())',
+              'socket.getfqdn(socket.getfqdn())',
               'socket.gethostbyname(socket.gethostname())',
               'socket.gethostbyname_ex(socket.gethostname())',
               'socket.gethostbyname(socket.getfqdn())',
