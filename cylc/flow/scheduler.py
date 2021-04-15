@@ -18,6 +18,7 @@
 import asyncio
 from collections import deque
 from dataclasses import dataclass
+from getpass import getuser
 import logging
 from optparse import Values
 import os
@@ -48,8 +49,7 @@ from cylc.flow.exceptions import (
 import cylc.flow.flags
 from cylc.flow.host_select import select_suite_host
 from cylc.flow.hostuserutil import (
-    get_host,
-    get_user,
+    get_hostname,
     is_remote_platform
 )
 from cylc.flow.loggingutil import (
@@ -253,8 +253,8 @@ class Scheduler:
     def __init__(self, reg, options):
         # flow information
         self.suite = reg
-        self.owner = get_user()
-        self.host = get_host()
+        self.owner = getuser()
+        self.host = get_hostname()
         self.id = f'{self.owner}{ID_DELIM}{self.suite}'
         self.uuid_str = SchedulerUUID()
         self.options = options

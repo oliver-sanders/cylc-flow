@@ -19,6 +19,7 @@
 import aiofiles
 from enum import Enum
 import logging
+from getpass import getuser
 import os
 from pathlib import Path
 from random import shuffle
@@ -49,10 +50,7 @@ from cylc.flow.platforms import (
     get_localhost_install_target,
     get_platform
 )
-from cylc.flow.hostuserutil import (
-    get_user,
-    is_remote_host
-)
+from cylc.flow.hostuserutil import is_remote_host
 from cylc.flow.remote import construct_ssh_cmd
 from cylc.flow.suite_db_mgr import SuiteDatabaseManager
 from cylc.flow.loggingutil import CylcLogFormatter
@@ -432,7 +430,7 @@ def get_workflow_source_dir(
 def get_suite_srv_dir(reg, suite_owner=None):
     """Return service directory of a suite."""
     if not suite_owner:
-        suite_owner = get_user()
+        suite_owner = getuser()
     run_d = os.getenv("CYLC_SUITE_RUN_DIR")
     if (
         not run_d

@@ -18,7 +18,6 @@
 from functools import partial
 import os
 from shutil import which
-import socket
 import sys
 from typing import Union
 
@@ -32,6 +31,7 @@ from cylc.flow.exceptions import (
     SuiteServiceFileError,
     SuiteStopped
 )
+from cylc.flow.hostuserutil import get_hostname, is_remote_host
 from cylc.flow.network import (
     encode_,
     decode_,
@@ -232,14 +232,17 @@ class SuiteRuntimeClient(ZMQSocketBase):
                 program and hostname.
         """
 
-        host = socket.gethostname()
+        host = get_hostname()
+        print(f'# {host}')
         # Identify communication method
         comms_method = os.getenv("CLIENT_COMMS_METH", default=CommsMeth.ZMQ)
-        if (self.host and
-            (comms_method == CommsMeth.ZMQ) and
-            (socket.gethostbyname(
-                self.host) == socket.gethostbyname(socket.gethostname()))):
+        if (
+            self.host
+            and comms_method == CommsMeth.ZMQ
+            and not is_remote_host(host)
+        ):
             comms_method = CommsMeth.LOCAL
+        print(f'# {comms_method}')
         if len(sys.argv) > 1:
             cmd = sys.argv[1]
         else:

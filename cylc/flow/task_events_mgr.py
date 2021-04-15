@@ -27,6 +27,7 @@ This module provides logic to:
 
 from collections import namedtuple
 from enum import Enum
+from getpass import getuser
 from logging import getLevelName, INFO, DEBUG
 import os
 from shlex import quote
@@ -37,7 +38,7 @@ from cylc.flow.parsec.config import ItemNotFoundError
 
 from cylc.flow import LOG, LOG_LEVELS
 from cylc.flow.cfgspec.glbl_cfg import glbl_cfg
-from cylc.flow.hostuserutil import get_host, get_user, is_remote_host
+from cylc.flow.hostuserutil import get_hostname, is_remote_host
 from cylc.flow.pathutil import (
     get_remote_suite_run_job_dir,
     get_suite_run_job_dir)
@@ -1068,9 +1069,9 @@ class TaskEventsManager():
                     self._get_events_conf(  # mail_from
                         itask,
                         "from",
-                        "notifications@" + get_host(),
+                        "notifications@" + get_hostname(),
                     ),
-                    self._get_events_conf(itask, "to", get_user())  # mail_to
+                    self._get_events_conf(itask, "to", getuser())  # mail_to
                 )
             )
         )

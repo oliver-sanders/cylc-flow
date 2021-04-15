@@ -17,12 +17,12 @@
 import json
 import re
 from copy import deepcopy
+from getpass import getuser
 from time import time
 from typing import Any, Dict, List, Optional, Tuple
 
 from cylc.flow import LOG
 import cylc.flow.flags
-from cylc.flow.hostuserutil import get_user
 from cylc.flow.xtriggers.wall_clock import wall_clock
 
 from cylc.flow.subprocctx import SubFuncContext
@@ -124,7 +124,7 @@ class XtriggerManager:
 
         # For function arg templating.
         if not user:
-            user = get_user()
+            user = getuser()
         self.farg_templ: Dict[str, Any] = {
             TMPL_SUITE_NAME: suite,
             TMPL_USER_NAME: user,

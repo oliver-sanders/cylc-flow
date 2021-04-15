@@ -18,10 +18,10 @@
 import os
 from typing import List, Optional, Tuple
 import packaging.version
+from pathlib import Path
 
 from cylc.flow import LOG
 from cylc.flow import __version__ as CYLC_VERSION
-from cylc.flow.hostuserutil import get_user_home
 from cylc.flow.parsec.config import ParsecConfig, ConfigNode as Conf
 from cylc.flow.parsec.exceptions import ParsecError
 from cylc.flow.parsec.upgrade import upgrader
@@ -239,8 +239,8 @@ with Conf('global.cylc', desc='''
             # site might see the suite host differently? If so we would need to
             # be able to override the target in suite configurations.
             Conf(
-                'method', VDR.V_STRING, 'name',
-                options=['name', 'address', 'hardwired'],
+                'method', VDR.V_STRING, 'fqdn',
+                options=['fqdn', 'address', 'hardwired'],
                 desc='''
                     This item determines how cylc finds the identity of the
                     suite host.For the default *name* method cylc asks the
@@ -254,15 +254,21 @@ with Conf('global.cylc', desc='''
                     *hardwired* method and manually specify the host name or IP
                     address of the suite host.
 
-                    Options:
+                    The options in detail:
 
-                    name
-                       Self-identified host name.
-                    address
-                       Automatically determined IP address (requires *target*).
-                    hardwired
-                       Manually specified host name or IP address (requires
-                       *host*).
+                    .. automodule:: cylc.flow.hostuserutil.fqdn
+                    .. automodule:: cylc.flow.hostuserutil.address
+                    .. automodule:: cylc.flow.hostuserutil.hardwired
+            ''')
+            Conf(
+                'other method', VDR.V_STRING, 'fqdn',
+                options=['fqdn', 'primary host name'],
+                desc='''
+
+                    The options in detail:
+
+                    .. automodule:: cylc.flow.hostuserutil.fqdn
+                    .. automodule:: cylc.flow.hostuserutil.primary_host_name
             ''')
             Conf('target', VDR.V_STRING, 'google.com', desc='''
                 This item is required for the *address* self-identification
@@ -838,7 +844,7 @@ class GlobalConfig(ParsecConfig):
     CONF_BASENAME: str = "global.cylc"
     DEFAULT_SITE_CONF_PATH: str = os.path.join(os.sep, 'etc', 'cylc')
     USER_CONF_PATH: str = os.path.join(
-        os.getenv('HOME') or get_user_home(),
+        os.getenv('HOME') or Path('~').expand(),
         '.cylc',
         'flow'
     )
