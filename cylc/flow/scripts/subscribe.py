@@ -31,7 +31,7 @@ from google.protobuf.json_format import MessageToDict
 
 from cylc.flow.exceptions import ClientError
 from cylc.flow.option_parsers import CylcOptionParser as COP
-from cylc.flow.network import get_location
+from cylc.flow.network.base import get_location
 from cylc.flow.network.subscriber import WorkflowSubscriber, process_delta_msg
 from cylc.flow.terminal import cli_function
 from cylc.flow.data_store_mgr import DELTAS_MAP

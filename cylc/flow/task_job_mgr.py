@@ -43,8 +43,8 @@ from cylc.flow.exceptions import (
     WorkflowConfigError,
     TaskRemoteMgmtError
 )
-from cylc.flow.hostuserutil import (
-    get_host,
+from cylc.flow.network.hostname import (
+    get_hostname,
     is_remote_platform
 )
 from cylc.flow.job_file import JobFileWriter
@@ -306,7 +306,7 @@ class TaskJobManager:
                 ) and
                 not is_remote_platform(platform)
             ):
-                host = get_host()
+                host = get_hostname()
 
             now_str = get_current_time_string()
             done_tasks.extend(itasks)

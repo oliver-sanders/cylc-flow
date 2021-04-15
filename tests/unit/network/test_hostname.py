@@ -19,20 +19,14 @@ import re
 
 import pytest
 
-from cylc.flow.hostuserutil import (
-    get_fqdn_by_host,
-    get_host,
-    get_user,
-    get_user_home,
+from cylc.flow.network.hostname import (
+    get_hostname,
     is_remote_host,
-    is_remote_user
+    is_remote_platform,
+    fqdn,
+    primary_host_name,
+    _get_local_ip_address,
 )
-
-
-def test_is_remote_user_on_current_user():
-    """is_remote_user with current user."""
-    assert not is_remote_user(None)
-    assert not is_remote_user(os.getenv('USER'))
 
 
 def test_is_remote_host_on_localhost():
@@ -40,11 +34,28 @@ def test_is_remote_host_on_localhost():
     assert not is_remote_host(None)
     assert not is_remote_host('localhost')
     assert not is_remote_host(os.getenv('HOSTNAME'))
-    assert not is_remote_host(get_host())
+    assert not is_remote_host(get_hostname())
 
 
-def test_get_fqdn_by_host_on_bad_host():
-    """get_fqdn_by_host bad host.
+def test_is_remote_host_invalid():
+    """Unresolvable hosts should be considered remote hosts."""
+    assert is_remote_host('nosuchhost.nosuchdomain.org')
+
+
+@pytest.mark.parametrize(
+    'hosts,ret', [
+        ([get_hostname()], False),
+        (['nosuchhost.nosuchdomain.org'], True),
+        (['localhost', 'nosuchhost.nosuchdomain.org'], True)
+    ]
+)
+def test_is_remote_platform(hosts, ret):
+    assert is_remote_platform({'hosts': hosts}) == ret
+
+
+@pytest.mark.parametrize('method', [fqdn, primary_host_name])
+def test_get_hostname_on_bad_host(method):
+    """get_hostname bad host.
 
     Warning:
         This test can fail due to ISP/network configuration
@@ -54,21 +65,17 @@ def test_get_fqdn_by_host_on_bad_host():
     """
     bad_host = 'nosuchhost.nosuchdomain.org'
     with pytest.raises(IOError) as exc:
-        get_fqdn_by_host(bad_host)
-    assert re.match(
-        r"(\[Errno -2\] Name or service|"
-        r"\[Errno 8\] nodename nor servname provided, or)"
-        r" not known: '{}'".format(bad_host),
-        str(exc.value)
-    )
+        method(bad_host)
+    assert exc.value.errno in [-2, 2, 8]
     assert exc.value.filename == bad_host
 
 
-def test_get_user():
-    """get_user."""
-    assert os.getenv('USER') == get_user()
+def test_get_local_ip_address():
+    """It returns something that looks roughly like an IP address.
 
-
-def test_get_user_home():
-    """get_user_home."""
-    assert os.getenv('HOME') == get_user_home()
+    Note the result could be IPv6 in any of its esoteric forms.
+    """
+    assert re.match(
+        r'^[0-9a-fA-F:\.]{3,}$',
+        _get_local_ip_address(get_hostname())
+    )

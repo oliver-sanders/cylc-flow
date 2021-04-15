@@ -25,7 +25,7 @@ from ansimarkup import parse as cparse
 from cylc.flow import LOG, RSYNC_LOG
 from cylc.flow.exceptions import ServiceFileError
 from cylc.flow.host_select import select_workflow_host
-from cylc.flow.hostuserutil import is_remote_host
+from cylc.flow.network.hostname import is_remote_host
 from cylc.flow.loggingutil import TimestampRotatingFileHandler
 from cylc.flow.network.client import WorkflowRuntimeClient
 from cylc.flow.option_parsers import (

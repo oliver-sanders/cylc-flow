@@ -28,7 +28,11 @@ from tokenize import tokenize
 from cylc.flow import LOG
 from cylc.flow.cfgspec.glbl_cfg import glbl_cfg
 from cylc.flow.exceptions import HostSelectException
-from cylc.flow.hostuserutil import get_fqdn_by_host, is_remote_host
+from cylc.flow.network.hostname import (
+    LOCALHOST,
+    get_host_from_name,
+    is_remote_host
+)
 from cylc.flow.remote import _remote_cylc_cmd, run_cmd
 from cylc.flow.terminal import parse_dirty_json
 
@@ -63,7 +67,7 @@ def select_workflow_host(cached=True):
         # list of workflow hosts
         global_config.get([
             'scheduler', 'run hosts', 'available'
-        ]) or ['localhost'],
+        ]) or [LOCALHOST],
         # rankings to apply
         ranking_string=global_config.get([
             'scheduler', 'run hosts', 'ranking'
@@ -135,12 +139,12 @@ def select_host(
     """
     # standardise host names - remove duplicate items
     hostname_map = {  # note dictionary keys filter out duplicates
-        get_fqdn_by_host(host): host
+        get_host_from_name(host): host
         for host in hosts
     }
     hosts = list(hostname_map)
     if blacklist:
-        blacklist = list(set(map(get_fqdn_by_host, blacklist)))
+        blacklist = list(set(map(get_host_from_name, blacklist)))
 
     # dict of conditions and whether they have been met (for error reporting)
     data = {

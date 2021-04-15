@@ -24,8 +24,8 @@ install_workflow "${TEST_NAME_BASE}" "${TEST_NAME_BASE}"
 get_local_ip_address() {
     python3 - "$1" <<'__PYTHON__'
 import sys
-from cylc.flow.hostuserutil import get_local_ip_address
-sys.stdout.write("%s\n" % get_local_ip_address(sys.argv[1]))
+from cylc.flow.network.hostname import _get_local_ip_address
+sys.stdout.write("%s\n" % _get_local_ip_address(sys.argv[1]))
 __PYTHON__
 }
 

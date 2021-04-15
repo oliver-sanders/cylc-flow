@@ -71,5 +71,3 @@ __OUT__
 
 purge
 exit
-
-TODO - the rest of these will require the same treatment

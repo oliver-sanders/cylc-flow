@@ -19,6 +19,7 @@
 import aiofiles
 from enum import Enum
 import logging
+from getpass import getuser
 import os
 from pathlib import Path
 from random import shuffle
@@ -49,10 +50,7 @@ from cylc.flow.platforms import (
     get_localhost_install_target,
     get_platform
 )
-from cylc.flow.hostuserutil import (
-    get_user,
-    is_remote_host
-)
+from cylc.flow.network.hostname import is_remote_host
 from cylc.flow.remote import construct_ssh_cmd, DEFAULT_RSYNC_OPTS
 from cylc.flow.workflow_db_mgr import WorkflowDatabaseManager
 from cylc.flow.loggingutil import CylcLogFormatter
@@ -434,7 +432,7 @@ def get_workflow_source_dir(
 def get_workflow_srv_dir(reg, workflow_owner=None):
     """Return service directory of a workflow."""
     if not workflow_owner:
-        workflow_owner = get_user()
+        workflow_owner = getuser()
     run_d = os.getenv("CYLC_WORKFLOW_RUN_DIR")
     if (
         not run_d

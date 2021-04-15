@@ -18,7 +18,6 @@
 from functools import partial
 import os
 from shutil import which
-import socket
 import sys
 from typing import Union
 
@@ -32,9 +31,12 @@ from cylc.flow.exceptions import (
     ServiceFileError,
     WorkflowStopped
 )
+from cylc.flow.network.hostname import get_hostname, is_remote_host
 from cylc.flow.network import (
     encode_,
     decode_,
+)
+from cylc.flow.network.base import (
     get_location,
     ZMQSocketBase
 )
@@ -231,7 +233,11 @@ class WorkflowRuntimeClient(ZMQSocketBase):
             dict: dictionary with the header information, such as
                 program and hostname.
         """
-        host = socket.gethostname()
+
+        host = get_hostname()
+        # Identify communication method
+        comms_method = os.getenv("CLIENT_COMMS_METH", default=CommsMeth.ZMQ)
+        LOG.error(f'comms={comms_method}')
         if len(sys.argv) > 1:
             cmd = sys.argv[1]
         else:

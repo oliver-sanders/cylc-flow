@@ -868,8 +868,8 @@ get_install_target_from_platform () {
 
 localhost_fqdn () {
 python -c "
-from cylc.flow.hostuserutil import get_fqdn_by_host
-print(get_fqdn_by_host(None))
+from cylc.flow.network.hostname import get_host_from_name
+print(get_host_from_name(None))
 "
 }
 

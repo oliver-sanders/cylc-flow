@@ -93,7 +93,7 @@ from cylc.flow import LOG
 from cylc.flow.cfgspec.glbl_cfg import glbl_cfg
 from cylc.flow.exceptions import HostSelectException
 from cylc.flow.host_select import select_workflow_host
-from cylc.flow.hostuserutil import get_fqdn_by_host
+from cylc.flow.network.hostname import get_host_from_name
 from cylc.flow.main_loop import periodic
 from cylc.flow.workflow_status import AutoRestartMode
 from cylc.flow.wallclock import (
@@ -136,7 +136,7 @@ def _should_auto_restart(scheduler, current_glbl_cfg):
                     # AutoRestartMode.FORCE_STOP can override this.
                     continue
 
-            if get_fqdn_by_host(host) == scheduler.host:
+            if get_host_from_name(host) == scheduler.host:
                 # this host is condemned, take the appropriate action
 
                 return mode

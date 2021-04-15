@@ -24,7 +24,6 @@ NOTE: These are functional tests, for unit tests see the docstrings in
 
 """
 from shlex import quote
-import socket
 from subprocess import call, DEVNULL
 
 import pytest
@@ -35,11 +34,10 @@ from cylc.flow.host_select import (
     select_host,
     select_workflow_host
 )
-from cylc.flow.hostuserutil import get_fqdn_by_host
-
-
-local_host, local_host_alises, _ = socket.gethostbyname_ex('localhost')
-local_host_fqdn = get_fqdn_by_host(local_host)
+from cylc.flow.network.hostname import (
+    LOCALHOST,
+    get_host_from_name
+)
 
 
 try:
@@ -56,7 +54,7 @@ try:
     ):
         raise KeyError('remote platform')
     # get the fqdn for this host
-    remote_platform_fqdn = get_fqdn_by_host(remote_platform)
+    remote_platform_fqdn = get_host_from_name(remote_platform)
 except (KeyError, IndexError):
     pytest.skip('Remote test host not available', allow_module_level=True)
     remote_platform = None
@@ -86,9 +84,9 @@ def test_remote_blacklict():
     # make extra sure filters are really being applied
     for _ in range(10):
         assert select_host(
-            [remote_platform, local_host],
+            [remote_platform, LOCALHOST],
             blacklist=[remote_platform]
-        ) == (local_host, local_host_fqdn)
+        )[1] == LOCALHOST
 
 
 def test_remote_rankings():
@@ -114,7 +112,7 @@ def test_remote_exclude(monkeypatch):
     def mocked_get_metrics(hosts, metrics, _=None):
         # pretend that ssh to remote_platform failed
         return (
-            {f'{local_host_fqdn}': {('cpu_count',): 123}},
+            {f'{LOCALHOST}': {('cpu_count',): 123}},
             {}
         )
     monkeypatch.setattr(
@@ -122,11 +120,11 @@ def test_remote_exclude(monkeypatch):
         mocked_get_metrics
     )
     assert select_host(
-        [local_host, remote_platform],
+        [LOCALHOST, remote_platform],
         ranking_string='''
             cpu_count()
         '''
-    ) == (local_host, local_host_fqdn)
+    )[1] == LOCALHOST
 
 
 def test_remote_workflow_host_select(mock_glbl_cfg):
@@ -149,12 +147,12 @@ def test_remote_workflow_host_condemned(mock_glbl_cfg):
         f'''
             [scheduler]
                 [[run hosts]]
-                    available = {remote_platform}, {local_host}
+                    available = {remote_platform}, {LOCALHOST}
                     condemned = {remote_platform}
         '''
     )
     for _ in range(10):
-        assert select_workflow_host() == (local_host, local_host_fqdn)
+        assert select_workflow_host()[1] == LOCALHOST
 
 
 def test_remote_workflow_host_rankings(mock_glbl_cfg):

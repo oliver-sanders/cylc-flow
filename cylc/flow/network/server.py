@@ -24,7 +24,8 @@ from graphql.execution.executors.asyncio import AsyncioExecutor
 import zmq
 
 from cylc.flow import LOG
-from cylc.flow.network import encode_, decode_, ZMQSocketBase
+from cylc.flow.network import encode_, decode_
+from cylc.flow.network.base import ZMQSocketBase
 from cylc.flow.network.authorisation import authorise
 from cylc.flow.network.graphql import (
     CylcGraphQLBackend, IgnoreFieldMiddleware, instantiate_middleware

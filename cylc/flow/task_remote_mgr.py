@@ -33,7 +33,7 @@ from typing import Any, Dict, TYPE_CHECKING
 from cylc.flow import LOG, RSYNC_LOG
 from cylc.flow.exceptions import TaskRemoteMgmtError
 import cylc.flow.flags
-from cylc.flow.hostuserutil import is_remote_host
+from cylc.flow.network.hostname import is_remote_host
 from cylc.flow.network.client_factory import CommsMeth
 from cylc.flow.pathutil import (
     get_remote_workflow_run_dir,

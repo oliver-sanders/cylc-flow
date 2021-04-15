@@ -20,7 +20,7 @@ from typing import Union
 
 from cylc.flow.exceptions import ClientError
 from cylc.flow.network.client_factory import CommsMeth
-from cylc.flow.network import get_location
+from cylc.flow.network.base import get_location
 from cylc.flow.remote import _remote_cylc_cmd
 from cylc.flow.workflow_files import load_contact_file, ContactFileFields
 

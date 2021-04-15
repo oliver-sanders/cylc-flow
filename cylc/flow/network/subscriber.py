@@ -22,7 +22,7 @@ from typing import Iterable, Union
 
 import zmq
 
-from cylc.flow.network import ZMQSocketBase, get_location
+from cylc.flow.network.base import ZMQSocketBase, get_location
 from cylc.flow.data_store_mgr import DELTAS_MAP
 
 NO_RECEIVE_INTERVAL = 0.5

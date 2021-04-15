@@ -67,7 +67,7 @@ from subprocess import Popen, PIPE
 from cylc.flow.cfgspec.glbl_cfg import glbl_cfg
 from cylc.flow.exceptions import UserInputError
 import cylc.flow.flags
-from cylc.flow.hostuserutil import is_remote_platform
+from cylc.flow.network.hostname import is_remote_platform
 from cylc.flow.option_parsers import CylcOptionParser as COP
 from cylc.flow.pathutil import (
     expand_path,

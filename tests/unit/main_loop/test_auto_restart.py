@@ -21,7 +21,7 @@ import pytest
 
 from cylc.flow import CYLC_LOG
 from cylc.flow.exceptions import HostSelectException
-from cylc.flow.hostuserutil import get_fqdn_by_host
+from cylc.flow.network.hostname import get_host_from_name
 from cylc.flow.main_loop.auto_restart import (
     _should_auto_restart,
     _can_auto_restart,
@@ -127,7 +127,7 @@ def test_should_auto_restart(
     """Ensure the workflow only auto-restarts when appropriate."""
     # factor out networking and FQDNs for testing purposes
     monkeypatch.setattr(
-        'cylc.flow.main_loop.auto_restart.get_fqdn_by_host',
+        'cylc.flow.main_loop.auto_restart.get_host_from_name',
         lambda x: x
     )
     # mock a scheduler object

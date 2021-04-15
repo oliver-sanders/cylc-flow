@@ -20,7 +20,7 @@ import asyncio
 import zmq
 
 from cylc.flow import LOG
-from cylc.flow.network import ZMQSocketBase
+from cylc.flow.network.base import ZMQSocketBase
 
 
 async def gather_coros(coro_func, items):

@@ -29,12 +29,12 @@ from cylc.flow.host_select import (
     select_host,
     select_workflow_host
 )
-from cylc.flow.hostuserutil import get_fqdn_by_host
+from cylc.flow.network.hostname import get_host_from_name
 from cylc.flow.parsec.exceptions import ListValueError
 
 
 localhost, localhost_aliases, _ = socket.gethostbyname_ex('localhost')
-localhost_fqdn = get_fqdn_by_host(localhost)
+localhost_fqdn = get_host_from_name(localhost)
 
 
 # NOTE: ensure that all localhost aliases are actually aliases of localhost,
@@ -44,7 +44,7 @@ localhost_fqdn = get_fqdn_by_host(localhost)
 localhost_aliases = [
     alias
     for alias in localhost_aliases
-    if get_fqdn_by_host(alias) == localhost_fqdn
+    if get_host_from_name(alias) == localhost_fqdn
 ]
 
 

@@ -16,13 +16,14 @@
 """Workflow event handler."""
 
 from collections import namedtuple
+from getpass import getuser
 import os
 from shlex import quote
 
 from cylc.flow import LOG
 from cylc.flow.cfgspec.glbl_cfg import glbl_cfg
 from cylc.flow.exceptions import WorkflowEventError
-from cylc.flow.hostuserutil import get_host, get_user
+from cylc.flow.network.hostname import get_hostname
 from cylc.flow.log_diagnosis import run_reftest
 from cylc.flow.subprocctx import SubProcContext
 
@@ -129,8 +130,8 @@ class WorkflowEventHandler():
                     '-s', subject,
                     '-r', self.get_events_conf(
                         config,
-                        'from', 'notifications@' + get_host()),
-                    self.get_events_conf(config, 'to', get_user()),
+                        'from', 'notifications@' + get_hostname()),
+                    self.get_events_conf(config, 'to', getuser()),
                 ],
                 env=env,
                 stdin_str=stdin_str)

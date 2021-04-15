@@ -24,7 +24,7 @@ from typing import (
 
 from cylc.flow.exceptions import PlatformLookupError
 from cylc.flow.cfgspec.glbl_cfg import glbl_cfg
-from cylc.flow.hostuserutil import is_remote_host
+from cylc.flow.network.hostname import is_remote_host
 
 
 FORBIDDEN_WITH_PLATFORM: Tuple[Tuple[str, str, List[Optional[str]]], ...] = (
