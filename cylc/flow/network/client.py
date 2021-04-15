@@ -233,7 +233,6 @@ class SuiteRuntimeClient(ZMQSocketBase):
         """
 
         host = get_hostname()
-        print(f'# {host}')
         # Identify communication method
         comms_method = os.getenv("CLIENT_COMMS_METH", default=CommsMeth.ZMQ)
         if (
@@ -242,7 +241,6 @@ class SuiteRuntimeClient(ZMQSocketBase):
             and not is_remote_host(host)
         ):
             comms_method = CommsMeth.LOCAL
-        print(f'# {comms_method}')
         if len(sys.argv) > 1:
             cmd = sys.argv[1]
         else:
