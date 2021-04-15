@@ -51,6 +51,14 @@ jobs:
         run: |
           pip install ."[all]"
 
+      - name: DNS Test
+        shell: python
+        run: |
+          from cylc.flow.hostuserutil import get_hostname
+          print(get_hostname())
+          print(get_hostname('localhost'))
+          print(get_hostname(get_hostname()))
+
       - name: style
         run: |
           pycodestyle

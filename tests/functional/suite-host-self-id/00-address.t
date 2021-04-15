@@ -25,7 +25,7 @@ get_local_ip_address() {
     python3 - "$1" <<'__PYTHON__'
 import sys
 from cylc.flow.hostuserutil import _get_local_ip_address
-sys.stdout.write("%s\n" % get_local_ip_address(sys.argv[1]))
+sys.stdout.write("%s\n" % _get_local_ip_address(sys.argv[1]))
 __PYTHON__
 }
 
