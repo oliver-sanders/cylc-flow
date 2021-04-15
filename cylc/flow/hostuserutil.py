@@ -55,32 +55,75 @@ from cylc.flow.cfgspec.glbl_cfg import glbl_cfg
 from cylc.flow.exceptions import UserInputError
 
 
-# from functools import wraps
+from functools import wraps
 
 
-# def _make_key(args, kwargs):
-#     return args + (
-#         item
-#         for item in kwargs.items()
-#     )
+def _make_key(args, kwargs):
+    return args + tuple(
+        item
+        for item in kwargs.items()
+    )
 
 
-# def lru_cache(fcn, expires=3600, typed=False):
+def lru_cache(fcn=None, expires=3600):
+
+    def _lru_cache(fcn, expires):
+        fcn.cache = {}
+        fcn.cache_age = time()
+
+        def _inner(*args, **kwargs):
+            nonlocal fcn, expires
+
+            cache = fcn.cache
+            age = fcn.cache_age
+
+            key = _make_key(args, kwargs)
+            if time() - age > expires:
+                cache = {}
+                age = time()
+            if key not in cache:
+                cache[key] = fcn(*args, **kwargs)
+            return cache[key]
+
+            return fcn(*args, **kwargs)
+
+        return _inner
+
+    if fcn:
+        # @lru_cache - no brackets
+        return _lru_cache(fcn, expires)
+
+    else:
+        # @lru_cache() - brackets
+        def _inner(fcn):
+            return _lru_cache(fcn, expires)
+
+        return _inner
+
+
+
+
+
+# def lru_cache(fcn, expires: int = 3600):
+#     """A LRU cache implantation with a timed expiry.
+
+#     Args:
+#         expires: Maximum cached value age in seconds.
+#     """
 #     age = None
-#     cache = {}
+#     fcn.cache = {}
 
 #     @wraps(fcn)
 #     def _inner(*args, **kwargs):
 #         nonlocal age
-#         nonlocal cache
 #         nonlocal fcn
-#         key = _make_key(args, kwargs, typed)
+#         key = _make_key(args, kwargs)
 #         if not age or time() - age > expires:
-#             cache = {}
+#             fcn.cache = {}
 #             age = time()
-#         if key not in cache:
-#             cache[key] = fcn(*args, **kwargs)
-#         return cache[key]
+#         if key not in fcn.cache:
+#             fcn.cache[key] = fcn(*args, **kwargs)
+#         return fcn.cache[key]
 
 #     return _inner
 
@@ -108,6 +151,7 @@ def _get_identification_cfg(key):
 #     return host
 
 
+@lru_cache
 def address() -> str:
     """Return IP address of target.
 
@@ -135,6 +179,7 @@ def hardwired() -> str:
     return _get_identification_cfg('host')
 
 
+@lru_cache
 def fqdn(target: Optional[str] = None) -> str:
     if target is None:
         fqdn = socket.getfqdn()
@@ -152,6 +197,7 @@ def fqdn(target: Optional[str] = None) -> str:
     return fqdn
 
 
+@lru_cache
 def primary_host_name(target: str) -> str:
     try:
         return socket.gethostbyname_ex(target)[0]

@@ -15,6 +15,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import os
+from time import sleep
 
 import pytest
 
@@ -22,7 +23,8 @@ from cylc.flow.hostuserutil import (
     get_hostname,
     is_remote_host,
     fqdn,
-    primary_host_name
+    primary_host_name,
+    lru_cache
 )
 
 
@@ -54,3 +56,57 @@ def test_get_hostname_on_bad_host(method):
         method(bad_host)
     assert exc.value.errno in [2, 8]
     assert exc.value.filename == bad_host
+
+
+def test_lru_cache():
+    """It should store results from previous invocations."""
+    hits = []
+
+    @lru_cache
+    def test_method(*args, **kwargs):
+        nonlocal hits
+        hits.append((args, kwargs))
+
+    # call the method once
+    test_method()
+    assert len(hits) == 1
+
+    # when we call again the result should be cached
+    test_method()
+    assert len(hits) == 1
+    assert hits == [(tuple(), {})]
+
+    hits[:] = []
+
+    # it should work with args and kwargs
+    test_method('a', 1, foo='bar')
+    assert hits == [(('a', 1), {'foo': 'bar'})]
+    test_method('a', 1, foo='bar')
+    assert hits == [(('a', 1), {'foo': 'bar'})]
+    test_method('b')
+    test_method('b')
+    assert hits == [(('a', 1), {'foo': 'bar'}), (('b',), {})]
+
+
+def test_cache_expiry():
+    """It should expire the cache after a configured period."""
+    hits = []
+
+    @lru_cache(expires=1)
+    def test_method(*args, **kwargs):
+        hits.append((args, kwargs))
+
+    # call the method once
+    test_method()
+    assert len(hits) == 1
+
+    # when we call again the result should be cached
+    test_method()
+    assert len(hits) == 1
+
+    # wait for the cache to expire
+    sleep(1)
+
+    # when we call again the result should be recomputed
+    test_method()
+    assert len(hits) == 2
