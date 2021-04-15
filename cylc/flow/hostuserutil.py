@@ -44,111 +44,79 @@ returning the IP address associated with this socket.
 
 """
 
-import os
-import pwd
-import socket
 from contextlib import suppress
+import functools
+import socket
 from time import time
-from typing import Optional
+from typing import Callable, Optional
 
 from cylc.flow.cfgspec.glbl_cfg import glbl_cfg
 from cylc.flow.exceptions import UserInputError
 
 
-from functools import wraps
-
-
 def _make_key(args, kwargs):
+    """Return a hashable key from args + kwargs.
+
+    Example:
+        >>> _make_key(('a', 1), {'b': 2})
+        ('a', 1, ('b', 2))
+
+    """
     return args + tuple(
         item
         for item in kwargs.items()
     )
 
 
-def lru_cache(fcn=None, expires=3600):
+def lru_cache(fcn: Callable = None, expires: int = 3600):
+    """A least recently used cache implementation with an expiry.
+
+    Args:
+        fcn:
+            The function to cache results from.
+        expires:
+            The maximum cache validity period.
+
+            After this period the cache will be wiped on the next call.
+
+    """
 
     def _lru_cache(fcn, expires):
         fcn.cache = {}
         fcn.cache_age = time()
 
+        @functools.wraps(fcn)
         def _inner(*args, **kwargs):
             nonlocal fcn, expires
 
             cache = fcn.cache
             age = fcn.cache_age
 
-            key = _make_key(args, kwargs)
+            # check if the cache has expired
             if time() - age > expires:
                 cache = {}
                 age = time()
-            if key not in cache:
-                cache[key] = fcn(*args, **kwargs)
-            return cache[key]
 
-            return fcn(*args, **kwargs)
+            # check if the value is in the cache ...
+            key = _make_key(args, kwargs)
+            if key not in cache:
+                # ... no -> compute it
+                cache[key] = fcn(*args, **kwargs)
+
+            return cache[key]
 
         return _inner
 
     if fcn:
-        # @lru_cache - no brackets
+        # @lru_cache - no brackets (use default exipres value)
         return _lru_cache(fcn, expires)
 
     else:
-        # @lru_cache() - brackets
+        # @lru_cache() - brackets (use provided expires value)
         def _inner(fcn):
             return _lru_cache(fcn, expires)
 
         return _inner
-
-
-
-
-
-# def lru_cache(fcn, expires: int = 3600):
-#     """A LRU cache implantation with a timed expiry.
-
-#     Args:
-#         expires: Maximum cached value age in seconds.
-#     """
-#     age = None
-#     fcn.cache = {}
-
-#     @wraps(fcn)
-#     def _inner(*args, **kwargs):
-#         nonlocal age
-#         nonlocal fcn
-#         key = _make_key(args, kwargs)
-#         if not age or time() - age > expires:
-#             fcn.cache = {}
-#             age = time()
-#         if key not in fcn.cache:
-#             fcn.cache[key] = fcn(*args, **kwargs)
-#         return fcn.cache[key]
-
-#     return _inner
-
-
-def _get_identification_cfg(key):
-    return glbl_cfg().get(['scheduler', 'host self-identification', key])
-
-
-# def _get_host_self_ident():
-#     hardwired = _get_identification_cfg('host')
-#     method = _get_identification_cfg('method')
-#     if method == 'address':
-#         host = _get_local_ip_address(
-#             _get_identification_cfg('target')
-#         )
-#     elif method == 'hardwired' and hardwired:
-#         host = hardwired
-#     else:  # if method == 'name':
-#         host = socket.getfqdn()
-#     if host == (
-#         '1.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0'
-#         '.0.0.0.0.0.0.0.0.0.0.0.0.ip6.arpa'
-#     ):
-#         host = socket.gethostname()
-#     return host
 
 
 @lru_cache
@@ -156,14 +124,25 @@ def address() -> str:
     """Return IP address of target.
 
     This finds the external address of the particular network adapter
-    responsible for connecting to the target?
+    responsible for connecting to the target.
 
-    Note that although no connection is made to the target, the target
-    must be reachable on the network (or just recorded in the DNS?) or
-    the function will hang and time out after a few seconds.
+    The address is configured by
+    :cylc:conf:`global.cylc[scheduler][DNS][self identification]address`.
 
+    If your host sees the internet, a common address such as ``google.com``
+    will do; otherwise choose a host visible on your intranet.
+
+    .. note::
+
+       Although no connection is made to the target, the target must be
+       reachable on the network (or just recorded in the DNS) or the function
+       will hang and time out after a few seconds.
     """
-    return _get_local_ip_address(_get_identification_cfg('target'))
+    return _get_local_ip_address(
+        glbl_cfg().get(
+            ['scheduler', 'DNS', 'self identification', 'address']
+        )
+    )
 
 
 def _get_local_ip_address(target: str) -> str:
@@ -176,11 +155,41 @@ def _get_local_ip_address(target: str) -> str:
 
 
 def hardwired() -> str:
-    return _get_identification_cfg('host')
+    """Hardwire the hostname or IP.
+
+    The host or IP is configured by
+    :cylc:conf:`global.cylc[scheduler][DNS][self identification]hardwired`.
+
+    .. warning::
+
+       The method configured by
+       :cylc:conf:`global.cylc[scheduler][DNS][network identification]method`
+       should resolve to the hardcoded value.
+    """
+    return (
+        glbl_cfg().get(
+            ['scheduler', 'DNS', 'self identification', 'hardwired']
+        )
+    )
 
 
 @lru_cache
 def fqdn(target: Optional[str] = None) -> str:
+    """Uses the :py:func:`socket.getfqdn` method to resolve the hostname.
+
+    .. note::
+
+       To ensure the return hostname will resolve on the network it is
+       then passed through :py:func:`socket.gethostbyname_ex`.
+
+    .. note::
+
+       To support Mac OS default DNS configuration from Catalina (10.15)
+       onwards the result ``1.0...0.ip6.arpa`` is interpreted as localhost
+       and :py:func:`socket.gethostname`, which returns the short hostname,
+       is used in its place. This should return the same value as `hostname
+       -f`.
+    """
     if target is None:
         fqdn = socket.getfqdn()
     else:
@@ -189,8 +198,6 @@ def fqdn(target: Optional[str] = None) -> str:
         '1.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0'
         '.0.0.0.0.0.0.0.0.0.0.0.0.ip6.arpa'
     ):
-        # returned by socket.getfqdn on Mac OS with default DNS config
-        # (this is localhost, use the short host name)
         fqdn = socket.gethostname()
     # check the fqdn is valid by calling socket.gethostbyname_ex
     primary_host_name(fqdn)
@@ -199,6 +206,17 @@ def fqdn(target: Optional[str] = None) -> str:
 
 @lru_cache
 def primary_host_name(target: str) -> str:
+    """Uses the primary host name from :py:func:`socket.gethostbyname_ex`.
+
+    .. note::
+
+       This was the primary method used for network hostname resolution by
+       Cylc7.
+
+    .. warning::
+
+       Does not support IPv6 name resolution.
+    """
     try:
         return socket.gethostbyname_ex(target)[0]
     except IOError as exc:
@@ -215,12 +233,12 @@ EXPORTED_METHODS = {
 }
 
 
-def _get_method(method):
-    meth = _get_identification_cfg(method)
+def _get_method(ident):
+    method = glbl_cfg().get(['scheduler', 'DNS', ident, 'method'])
     try:
-        method = EXPORTED_METHODS[meth]
+        method = EXPORTED_METHODS[method]
     except KeyError:
-        raise UserInputError(f'Invalid hostname method: {meth}')
+        raise UserInputError(f'Invalid hostname method: {method}')
 
     # TODO: wrap with LRU cache
 
@@ -229,8 +247,8 @@ def _get_method(method):
 
 # NOTE: these methods cannot change during the live of the Scheduler
 # by a global config reload (because that wouldn't make sense)
-get_hostname = _get_method('method')
-get_host_from_name = _get_method('other method')
+get_hostname = _get_method('self identification')
+get_host_from_name = _get_method('network identification')
 LOCALHOST = get_hostname()
 
 
@@ -243,7 +261,6 @@ def is_remote_host(name):
 
     Return False if name is None.
     Return True if host is unknown.
-
     """
     if not name or name.split(".")[0].startswith("localhost"):
         # e.g. localhost.localdomain
@@ -273,225 +290,3 @@ def is_remote_platform(platform):
         if is_remote_host(host):
             return True
     return False
-
-
-# class HostUtil:
-#     """host and user ID utility."""
-
-#     EXPIRE = 3600.0  # singleton expires in 1 hour by default
-#     _instance = None
-
-#     @classmethod
-#     def get_inst(cls, new=False, expire=None):
-#         """Return the singleton instance of this class.
-
-#         "new": if True, create a new singleton instance.
-#         "expire":
-#             the expire duration in seconds. If None or not specified, the
-#             singleton expires after 3600.0 seconds (1 hour). Once expired, the
-#             next call to this method will create a new singleton.
-
-#         """
-#         if expire is None:
-#             expire = cls.EXPIRE
-#         if cls._instance is None or new or time() > cls._instance.expire_time:
-#             cls._instance = cls(expire)
-#         return cls._instance
-
-#     def __init__(self, expire):
-#         self.expire_time = time() + expire
-#         self._host = None  # preferred name of localhost
-#         self._host_exs = {}  # host: socket.gethostbyname_ex(host), ...
-#         self._remote_hosts = {}  # host: is_remote, ...
-#         self.user_pwent = None
-#         self.remote_users = {}
-
-#     @staticmethod
-#     def get_local_ip_address(target):
-#         """Return IP address of target.
-
-#         This finds the external address of the particular network adapter
-#         responsible for connecting to the target?
-
-#         Note that although no connection is made to the target, the target
-#         must be reachable on the network (or just recorded in the DNS?) or
-#         the function will hang and time out after a few seconds.
-
-#         """
-
-#         ipaddr = ""
-#         with suppress(IOError):
-#             with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
-#                 sock.connect((target, 8000))
-#                 ipaddr = sock.getsockname()[0]
-#         return ipaddr
-
-#     @staticmethod
-#     def get_host_ip_by_name(target):
-#         """Return internal IP address of target."""
-#         return socket.gethostbyname(target)
-
-#     def _get_host_info(self, target=None):
-#         """Return the extended info of the current host."""
-#         if target not in self._host_exs:
-#             if target is None:
-#                 target = socket.gethostname()
-#             try:
-#                 self._host_exs[target] = socket.gethostbyname_ex(
-#                     target
-#                 )
-#             except IOError as exc:
-#                 if exc.filename is None:
-#                     exc.filename = target
-#                 raise
-#         return self._host_exs[target]
-
-#     @staticmethod
-#     def _get_identification_cfg(key):
-#         """Return the [suite host self-identification]key global conf."""
-#         return glbl_cfg().get(['scheduler', 'host self-identification', key])
-
-#     def get_host(self):
-#         """Return the preferred identifier for the suite (or current) host.
-
-#         As specified by the "[scheduler][host self-identification]" settings in
-#         the site/user global.cylc files. This is mainly used for suite host
-#         identification by task jobs.
-
-#         """
-#         if self._host is None:
-#             hardwired = self._get_identification_cfg('host')
-#             method = self._get_identification_cfg('method')
-#             if method == 'address':
-#                 self._host = self.get_local_ip_address(
-#                     self._get_identification_cfg('target'))
-#             elif method == 'hardwired' and hardwired:
-#                 self._host = hardwired
-#             else:  # if method == 'name':
-#                 self._host = self._get_host_info()[0]
-#         return self._host
-
-#     def get_fqdn_by_host(self, target):
-#         """Return the fully qualified domain name of the target host."""
-#         if not self.is_remote_host(target):
-#             return self.get_host()
-#         return self._get_host_info(target)[0]
-
-#     def get_user(self):
-#         """Return name of current user."""
-#         return self._get_user_pwent().pw_name
-
-#     def get_user_home(self):
-#         """Return home directory of current user."""
-#         return self._get_user_pwent().pw_dir
-
-#     def _get_user_pwent(self):
-#         """Ensure self.user_pwent is set to current user's password entry."""
-#         if self.user_pwent is None:
-#             my_user_name = os.environ.get('USER')
-#             if my_user_name:
-#                 self.user_pwent = pwd.getpwnam(my_user_name)
-#             else:
-#                 self.user_pwent = pwd.getpwuid(os.getuid())
-#             self.remote_users.update(((self.user_pwent.pw_name, False),))
-#         return self.user_pwent
-
-#     def is_remote_host(self, name):
-#         """Return True if name has different IP address than the current host.
-
-#         Return False if name is None.
-#         Return True if host is unknown.
-
-#         """
-#         if name not in self._remote_hosts:
-#             if not name or name.split(".")[0].startswith("localhost"):
-#                 # e.g. localhost.localdomain
-#                 self._remote_hosts[name] = False
-#             else:
-#                 try:
-#                     host_info = self._get_host_info(name)
-#                 except IOError:
-#                     self._remote_hosts[name] = True
-#                 else:
-#                     self._remote_hosts[name] = (
-#                         host_info != self._get_host_info())
-#         return self._remote_hosts[name]
-
-#     def is_remote_user(self, name):
-#         """Return True if name is not a name of the current user.
-
-#         Return False if name is None.
-#         Return True if name is not in the password database.
-#         """
-#         if not name:
-#             return False
-#         if name not in self.remote_users:
-#             try:
-#                 self.remote_users[name] = (
-#                     pwd.getpwnam(name) != self._get_user_pwent())
-#             except KeyError:
-#                 self.remote_users[name] = True
-#         return self.remote_users[name]
-
-#     def _is_remote_platform(self, platform):
-#         """Return True if any job host in platform have different IP address
-#         to the current host.
-
-#         Return False if name is None.
-#         Return True if host is unknown.
-
-#         Todo:
-#             Should this fail miserably if some hosts are remote and some are
-#             not?
-#         """
-#         if not platform:
-#             return False
-#         for host in platform['hosts']:
-#             if is_remote_host(host) is True:
-#                 return True
-#         return False
-
-
-# def get_host_ip_by_name(target):
-#     """Shorthand for HostUtil.get_inst().get_host_ip_by_name(target)."""
-#     return HostUtil.get_inst().get_host_ip_by_name(target)
-
-
-# def get_local_ip_address(target):
-#     """Shorthand for HostUtil.get_inst().get_local_ip_address(target)."""
-#     return HostUtil.get_inst().get_local_ip_address(target)
-
-
-# def get_host():
-#     """Shorthand for HostUtil.get_inst().get_host()."""
-#     return HostUtil.get_inst().get_host()
-
-
-# def get_fqdn_by_host(target):
-#     """Shorthand for HostUtil.get_inst().get_fqdn_by_host(target)."""
-#     return HostUtil.get_inst().get_fqdn_by_host(target)
-
-
-# def get_user():
-#     """Shorthand for HostUtil.get_inst().get_user()."""
-#     return HostUtil.get_inst().get_user()
-
-
-# def get_user_home():
-#     """Shorthand for HostUtil.get_inst().get_user_home()."""
-#     return HostUtil.get_inst().get_user_home()
-
-
-# def is_remote_platform(platform):
-#     """shorthand for hostutil.get_inst()._is_remote_platform(host, owner)."""
-#     return hostutil.get_inst()._is_remote_platform(platform)
-
-
-# def is_remote_host(name):
-#     """shorthand for hostutil.get_inst().is_remote_host(name)."""
-#     return hostutil.get_inst().is_remote_host(name)
-
-
-# def is_remote_user(name):
-#     """Return True if name is not a name of the current user."""
-#     return HostUtil.get_inst().is_remote_user(name)

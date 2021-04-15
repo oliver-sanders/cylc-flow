@@ -229,58 +229,63 @@ with Conf('global.cylc', desc='''
                    cpu_percent()
             ''')
 
-        with Conf('host self-identification', desc='''
-            The suite host's identity must be determined locally by cylc and
-            passed to running tasks (via ``$CYLC_SUITE_HOST``) so that task
-            messages can target the right suite on the right host.
+        with Conf('DNS', desc='''
+            Configures the way Cylc resolves host names.
         '''):
-            # TODO
-            # Is it conceivable that different remote task hosts at the same
-            # site might see the suite host differently? If so we would need to
-            # be able to override the target in suite configurations.
-            Conf(
-                'method', VDR.V_STRING, 'fqdn',
-                options=['fqdn', 'address', 'hardwired'],
-                desc='''
-                    This item determines how cylc finds the identity of the
-                    suite host.For the default *name* method cylc asks the
-                    suite host for its host name. This should resolve on remote
-                    task hosts to the IP address of the suite host; if it
-                    doesn't, adjust network settings or use one of the other
-                    methods. For the *address* method, cylc attempts to use a
-                    special external "target address" to determine the IP
-                    address of the suite host as seen by remote task hosts.
-                    And finally, as a last resort, you can choose the
-                    *hardwired* method and manually specify the host name or IP
-                    address of the suite host.
+            with Conf('self identification', desc='''
+                Confifgures the way Cylc resolves the name of localhost.
 
-                    The options in detail:
+                The suite host's identity must be determined locally by cylc
+                and passed to running tasks (via ``$CYLC_SUITE_HOST``) so that
+                task messages can target the right suite on the right host.
+            '''):
+                # TODO
+                # Is it conceivable that different remote task hosts at the
+                # same site might see the suite host differently? If so we
+                # would need to be able to override the target in suite
+                # configurations.
+                Conf(
+                    'method', VDR.V_STRING, 'fqdn',
+                    options=['fqdn', 'address', 'hardwired'],
+                    desc='''
+                        The method used to determine the hostname,
 
-                    .. automodule:: cylc.flow.hostuserutil.fqdn
-                    .. automodule:: cylc.flow.hostuserutil.address
-                    .. automodule:: cylc.flow.hostuserutil.hardwired
-            ''')
-            Conf(
-                'other method', VDR.V_STRING, 'fqdn',
-                options=['fqdn', 'primary host name'],
-                desc='''
+                        By Cylc asks the suite host for its host name. This
+                        should resolve on remote task hosts to the IP address
+                        of the suite host; if it doesn't, adjust network
+                        settings or use one of the other methods.
 
-                    The options in detail:
+                        The options in detail (in order of preference):
 
-                    .. automodule:: cylc.flow.hostuserutil.fqdn
-                    .. automodule:: cylc.flow.hostuserutil.primary_host_name
-            ''')
-            Conf('target', VDR.V_STRING, 'google.com', desc='''
-                This item is required for the *address* self-identification
-                method. If your suite host sees the internet, a common address
-                such as ``google.com`` will do; otherwise choose a host
-                visible on your intranet.
-            ''')
-            Conf('host', VDR.V_STRING, desc='''
-                Use this item to explicitly set the name or IP address of the
-                suite host if you have to use the *hardwired*
-                self-identification method.
-            ''')
+                        .. automethod:: cylc.flow.hostuserutil.fqdn
+                        .. automethod:: cylc.flow.hostuserutil.address
+                        .. automethod:: cylc.flow.hostuserutil.hardwired
+                ''')
+                Conf('address', VDR.V_STRING, 'google.com', desc='''
+                    Use with :cylc:conf:`[..]method = address`
+                    see :py:meth:`cylc.flow.hostuserutil.address`.
+                ''')
+                Conf('hardwired', VDR.V_STRING, desc='''
+                    Use with :cylc:conf:`[..]method = hardwired`
+                    see :py:meth:`cylc.flow.hostuserutil.hardwired`.
+                ''')
+            with Conf('network identification', desc='''
+            '''):
+                Conf(
+                    'method', VDR.V_STRING, 'fqdn',
+                    options=['fqdn', 'primary host name'],
+                    desc='''
+                        The method used to resolve the name of another host on
+                        the network.
+
+                        The options in detail (in order of preference):
+
+                        .. automethod:: cylc.flow.hostuserutil.fqdn
+                           :noindex:
+
+                        .. automethod::
+                            cylc.flow.hostuserutil.primary_host_name
+                ''')
 
         with Conf('events', desc='''
             You can define site defaults for each of the following options,
@@ -844,7 +849,7 @@ class GlobalConfig(ParsecConfig):
     CONF_BASENAME: str = "global.cylc"
     DEFAULT_SITE_CONF_PATH: str = os.path.join(os.sep, 'etc', 'cylc')
     USER_CONF_PATH: str = os.path.join(
-        os.getenv('HOME') or Path('~').expand(),
+        os.getenv('HOME') or Path('~').expanduser(),
         '.cylc',
         'flow'
     )
