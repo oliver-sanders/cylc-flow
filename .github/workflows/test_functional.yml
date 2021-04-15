@@ -129,11 +129,23 @@ jobs:
                 [[_local_at_indep_tcp]]
                     hosts = localhost
           __HERE__
-          cp "${PTH}/global.cylc" "${PTH}/global-tests.cylc"
+          ln -s "${PTH}/global.cylc" "${PTH}/global-tests.cylc"
 
       - name: Swarm Configure
         run: |
           etc/bin/swarm --yes --debug configure
+
+      - name: Configure Cylc
+        run: |
+          PTH="$HOME/.cylc/flow/"
+          cat >> "${PTH}/global.cylc" <<__HERE__
+
+          # use IP address rather than hostname for GH actions as
+          # DNS is unstable
+          [scheduler]
+            [[host self-identification]]
+              method = address
+          __HERE__
 
       - name: Swarm Build
         if: env.REMOTE_PLATFORM == 'true'

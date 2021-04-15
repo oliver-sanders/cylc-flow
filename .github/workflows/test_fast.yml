@@ -54,6 +54,19 @@ jobs:
         run: |
           pip install ."[all]"
 
+      - name: Configure Cylc
+        run: |
+          PTH="$HOME/.cylc/flow/"
+          mkdir -p "$PTH"
+          cat > "${PTH}/global.cylc" <<__HERE__
+          # use IP address rather than hostname for GH actions as
+          # DNS is unstable
+          [scheduler]
+            [[host self-identification]]
+              method = address
+          __HERE__
+          ln -s "${PTH}/global.cylc" "${PTH}/global-tests.cylc"
+
       - name: style
         run: |
           pycodestyle
