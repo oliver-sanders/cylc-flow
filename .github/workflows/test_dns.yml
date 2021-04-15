@@ -1,0 +1,155 @@
+name: dns test
+
+on:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        try: ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
+    steps:
+      - name: Configure Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.7
+      - name: hostname
+        run: |
+          for opt in '-A' '-d' '-f'; do
+              echo "hostname $opt: $(hostname $opt)"
+          done
+      - name: python.socket
+        shell: python
+        run: |
+          import socket
+          for expr in (
+              'socket.gethostname()',
+              'socket.getfqdn()',
+              'socket.getfqdn(socket.gethostname())',
+              'socket.getfqdn(socket.getfqdn())',
+              'socket.gethostbyname_ex(socket.gethostname())',
+              'socket.gethostbyname_ex(socket.getfqdn())'
+          ):
+              print(f'{expr:50}: {eval(expr)}')
+
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Apt-Get Install
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y shellcheck sqlite3
+
+      - name: Install
+        run: |
+          pip install ."[all]"
+
+      - name: ZMQ TCP Test
+        shell: python
+        run: |
+          import socket
+          import time
+
+          import zmq
+          from zmq.asyncio import Context, Poller
+          import asyncio
+
+          from async_timeout import timeout
+
+
+
+          ctx = Context.instance()
+
+
+          async def receiver(host, port):
+              """receive messages with polling"""
+              pull = ctx.socket(zmq.PULL)
+              url = f'tcp://{host}:{port}'
+              pull.connect(url)
+              poller = Poller()
+              poller.register(pull, zmq.POLLIN)
+              async with timeout(6):
+                  while True:
+                      events = await poller.poll()
+                      if pull in dict(events):
+                          print("recving", events)
+                          msg = await pull.recv_multipart()
+                          print('recvd', msg)
+                          if msg == [b'END']:
+                              break
+              print('done')
+
+
+          async def sender(port):
+              """send a message every second"""
+              tic = time.time()
+              push = ctx.socket(zmq.PUSH)
+              try:
+
+                  url = f'tcp://*:{port}'
+                  push.bind(url)
+                  for _ in range(3):
+                      print("sending")
+                      await push.send_multipart([str(time.time() - tic).encode('ascii')])
+                      await asyncio.sleep(1)
+                  await push.send_multipart(['END'.encode('ascii')])
+              finally:
+                  push.close()
+
+          port = 43087
+          for host in [
+              '127.0.0.1',
+              socket.gethostname(),
+              socket.getfqdn(),
+          ]:
+              print(f'# {host}:{port}')
+              asyncio.get_event_loop().run_until_complete(
+                  asyncio.wait(
+                      [
+                          receiver(host, port),
+                          sender(port),
+                      ]
+                  )
+              )
+              print('\n\n\n')
+
+      - name: DNS Test 2
+        shell: python
+        run: |
+          from cylc.flow.hostuserutil import get_hostname
+          print(get_hostname())
+          print(get_hostname('localhost'))
+          print(get_hostname(get_hostname()))
+
+      - name: DNS Test 3
+        shell: python
+        run: |
+          import socket
+          from cylc.flow.hostuserutil import get_hostname
+          print(get_hostname(socket.gethostname()))
+          print(get_hostname(socket.getfqdn()))
+
+      - name: Run
+        run: |
+          mkdir -p "$HOME/cylc-run/one"
+          cd "$HOME/cylc-run/one"
+          cat >flow.cylc <<__HERE__
+          [scheduler]
+              [[events]]
+                  inactivity = PT1M
+                  timeout = PT1M
+                  abort on inactivity = true
+                  abort on timeout = true
+          [scheduling]
+            [[graph]]
+              R1 = one
+          [runtime]
+            [[one]]
+          __HERE__
+          cylc play one --debug -n
+
+      - name: Debug
+        if: failure()
+        run: |
+          find "$HOME/cylc-run/one/log" -type f -exec echo -e "\n\n\n### {}" \; -exec cat '{}' \;

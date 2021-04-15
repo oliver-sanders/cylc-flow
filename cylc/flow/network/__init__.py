@@ -272,6 +272,7 @@ class ZMQSocketBase:
             raise ClientError(
                 "Failed to load the suite's public key, so cannot connect.")
 
+        LOG.warning(f'self.socket.connect("tcp://{host}:{port}")')
         self.socket.connect(f'tcp://{host}:{port}')
 
     def _socket_options(self):

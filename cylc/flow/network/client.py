@@ -127,6 +127,7 @@ class SuiteRuntimeClient(ZMQSocketBase):
         else:
             port = int(port)
         self.host = host
+        LOG.critical(f'# {host}:{port}')
         self.port = port
         if timeout is None:
             timeout = self.DEFAULT_TIMEOUT
@@ -241,6 +242,7 @@ class SuiteRuntimeClient(ZMQSocketBase):
             and not is_remote_host(host)
         ):
             comms_method = CommsMeth.LOCAL
+        LOG.error(f'comms={comms_method}')
         if len(sys.argv) > 1:
             cmd = sys.argv[1]
         else:
