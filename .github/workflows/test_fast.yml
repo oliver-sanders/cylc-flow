@@ -29,6 +29,13 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
+      - name: DNS Test 1
+        shell: python
+        run: |
+          import socket
+          print(socket.gethostbyname_ex(socket.getfqdn()))
+          print(socket.gethostbyname_ex(socket.gethostname()))
+
       - name: Brew Install
         if: startsWith(matrix.os, 'macos')
         run: |
@@ -51,7 +58,7 @@ jobs:
         run: |
           pip install ."[all]"
 
-      - name: DNS Test
+      - name: DNS Test 2
         shell: python
         run: |
           from cylc.flow.hostuserutil import get_hostname
