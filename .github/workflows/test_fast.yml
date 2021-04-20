@@ -39,6 +39,7 @@ jobs:
       - name: Check CONTRIBUTING.md
         uses: oliver-sanders/release-actions/check-shortlog
 
+
       - name: Configure Python
         uses: actions/setup-python@v1
         with:
