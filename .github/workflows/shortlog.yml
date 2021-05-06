@@ -19,4 +19,4 @@ jobs:
           fetch-depth: 0  # need to fetch all commits to check contributors
 
       - name: Check CONTRIBUTING.md
-        uses: oliver-sanders/release-actions/check-shortlog@a2e0649a3f093c3e076807969d092e72a5d52a21
+        uses: oliver-sanders/release-actions/check-shortlog@11496424bcec9b7be18b8c5ee7f4194c08312208
