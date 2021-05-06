@@ -36,10 +36,6 @@ jobs:
         with:
           fetch-depth: 2  # required by codecov
 
-      - name: Check CONTRIBUTING.md
-        uses: oliver-sanders/release-actions/check-shortlog@8ce09a068b9ec114cfa79d147d11ed40cba46a0c
-
-
       - name: Configure Python
         uses: actions/setup-python@v1
         with:

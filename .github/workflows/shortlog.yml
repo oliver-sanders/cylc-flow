@@ -1,0 +1,22 @@
+name: check contributor list
+
+on:
+  pull_request:
+  workflow_dispatch:
+  push:
+    paths-ignore:
+      - '**'
+      - '!CONTRIBUTING.md'
+
+jobs:
+  test:
+    runs-on: 'ubuntu-latest'
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0  # need to fetch all commits to check contributors
+
+      - name: Check CONTRIBUTING.md
+        uses: oliver-sanders/release-actions/check-shortlog@a2e0649a3f093c3e076807969d092e72a5d52a21
