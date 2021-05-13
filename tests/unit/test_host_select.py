@@ -29,40 +29,43 @@ from cylc.flow.host_select import (
     select_host,
     select_workflow_host
 )
-from cylc.flow.network.hostname import get_host_from_name
+from cylc.flow.network.hostname import (
+    LOCALHOST,
+    LOCALHOST_ALIASES,
+    get_host_from_name,
+)
 from cylc.flow.parsec.exceptions import ListValueError
 
 
-localhost, localhost_aliases, _ = socket.gethostbyname_ex('localhost')
-localhost_fqdn = get_host_from_name(localhost)
-
-
-# NOTE: ensure that all localhost aliases are actually aliases of localhost,
-#       it would appear that this is not always the case
-#       on Travis-CI on of the aliases has a different fqdn from the fqdn
-#       of the host it is an alias of
-localhost_aliases = [
+LOCALHOST_ALIASES = [
     alias
-    for alias in localhost_aliases
-    if get_host_from_name(alias) == localhost_fqdn
+    for alias in LOCALHOST_ALIASES
+    if alias != LOCALHOST
 ]
+
+
+LOCALHOST_SHORT = None
+try:
+    if get_host_from_name(socket.gethostname()) == LOCALHOST:
+        LOCALHOST_SHORT = socket.gethostname()
+except IOError:
+    pass
 
 
 def test_localhost():
     """Basic test with one host to choose from."""
-    assert select_host([localhost]) == (
-        localhost,
-        localhost_fqdn
-    )
+    short, fqdn = select_host([LOCALHOST])
+    assert get_host_from_name(short) == LOCALHOST
+    assert fqdn == LOCALHOST
 
 
 def test_unique():
     """Basic test choosing from multiple forms of localhost"""
     name, fqdn = select_host(
-        localhost_aliases + [localhost]
+        LOCALHOST_ALIASES + [LOCALHOST]
     )
-    assert name in localhost_aliases + [localhost]
-    assert fqdn == localhost_fqdn
+    assert name in LOCALHOST_ALIASES + [LOCALHOST]
+    assert fqdn == LOCALHOST
 
 
 def test_filter():
@@ -70,8 +73,8 @@ def test_filter():
     message = 'Localhost not allowed'
     with pytest.raises(HostSelectException) as excinfo:
         select_host(
-            [localhost],
-            blacklist=[localhost],
+            [LOCALHOST],
+            blacklist=[LOCALHOST],
             blacklist_name='Localhost not allowed'
         )
     assert message in str(excinfo.value)
@@ -83,7 +86,7 @@ def test_rankings():
     (doesn't prove anything by itself hence test_unreasonable_rankings)
     """
     assert select_host(
-        [localhost],
+        [LOCALHOST],
         ranking_string='''
             # if this test fails due to race conditions
             # then you have bigger issues than a test failure
@@ -92,7 +95,7 @@ def test_rankings():
             cpu_count() > 1
             disk_usage('/').free > 1
         '''
-    ) == (localhost, localhost_fqdn)
+    )[1] == LOCALHOST
 
 
 def test_unreasonable_rankings():
@@ -102,7 +105,7 @@ def test_unreasonable_rankings():
     """
     with pytest.raises(HostSelectException) as excinfo:
         select_host(
-            [localhost],
+            [LOCALHOST],
             ranking_string='''
                 # if this test fails due to race conditions
                 # then you are very lucky
@@ -121,18 +124,22 @@ def test_metric_command_failure():
     """If the psutil command (or SSH) fails ensure the host is excluded."""
     with pytest.raises(HostSelectException) as excinfo:
         select_host(
-            [localhost],
+            [LOCALHOST],
             ranking_string='''
                 # elephant is not a psutil attribute
                 # so will cause the command to fail
                 elephant
             '''
         )
-    assert excinfo.value.data[localhost_fqdn]['get_metrics'] == (
+    assert excinfo.value.data[LOCALHOST]['get_metrics'] == (
         'Command failed (exit: 1)'
     )
 
 
+@pytest.mark.skipif(
+    not LOCALHOST_SHORT,
+    reason='require short form of localhost'
+)
 def test_workflow_host_select(mock_glbl_cfg):
     """Run the workflow_host_select mechanism."""
     mock_glbl_cfg(
@@ -140,10 +147,10 @@ def test_workflow_host_select(mock_glbl_cfg):
         f'''
             [scheduler]
                 [[run hosts]]
-                    available= {localhost}
+                    available= {LOCALHOST_SHORT}
         '''
     )
-    assert select_workflow_host() == (localhost, localhost_fqdn)
+    assert select_workflow_host() == (LOCALHOST_SHORT, LOCALHOST)
 
 
 def test_workflow_host_select_default(mock_glbl_cfg):
@@ -157,14 +164,13 @@ def test_workflow_host_select_default(mock_glbl_cfg):
         '''
     )
     hostname, host_fqdn = select_workflow_host()
-    assert hostname in localhost_aliases + [localhost]
-    assert host_fqdn == localhost_fqdn
+    assert hostname in LOCALHOST_ALIASES + [LOCALHOST]
+    assert get_host_from_name(hostname) == LOCALHOST
 
 
-# NOTE: on Travis-CI the fqdn of `localhost` is `localhost`
 @pytest.mark.skipif(
-    localhost == localhost_fqdn,
-    reason='Cannot condemn a host unless is has a safe unique fqdn.'
+    not LOCALHOST_SHORT,
+    reason='require short form of localhost'
 )
 def test_workflow_host_select_condemned(mock_glbl_cfg):
     """Ensure condemned hosts are filtered out."""
@@ -173,8 +179,8 @@ def test_workflow_host_select_condemned(mock_glbl_cfg):
         f'''
             [scheduler]
                 [[run hosts]]
-                    available = {localhost}
-                    condemned = {localhost_fqdn}
+                    available = {LOCALHOST_SHORT}
+                    condemned = {LOCALHOST}
         '''
     )
     with pytest.raises(HostSelectException) as excinfo:
@@ -194,8 +200,8 @@ def test_condemned_host_ambiguous(mock_glbl_cfg):
             f'''
                 [scheduler]
                     [[run hosts]]
-                        available = {localhost}
-                        condemned = {localhost}
+                        available = {LOCALHOST}
+                        condemned = localhost
             '''
         )
     assert 'ambiguous host' in excinfo.value.msg

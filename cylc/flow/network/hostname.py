@@ -24,7 +24,6 @@ from cylc.flow.exceptions import UserInputError
 from cylc.flow.util import elru_cache
 
 
-@expiring_lru_cache
 def address() -> str:
     """Return IP address of target.
 
@@ -104,7 +103,6 @@ def hardwired() -> str:
     )
 
 
-@expiring_lru_cache
 def local_fqdn() -> str:
     """Uses the :py:func:`socket.getfqdn` method to resolve the hostname."""
     fqdn = socket.getfqdn()
@@ -239,11 +237,11 @@ def _get_method(ident: str) -> Callable:
 
 # NOTE: these methods cannot change during the live of the Scheduler
 # by a global config reload (because that wouldn't make sense)
-get_hostname: Callable = _get_method('self identification')
+
 get_host_from_name: Callable = _get_method('network identification')
 
 # preferred localhost identifier
-LOCALHOST: str = get_hostname()
+LOCALHOST: str = _get_method('self identification')()
 # aliases of localhost (e.g. localhost2, localhost.localdomain)
 LOCALHOST_ALIASES: Set[str] = set(socket.gethostbyname_ex('localhost')[1])
 LOCALHOST_ALIASES.add(LOCALHOST)

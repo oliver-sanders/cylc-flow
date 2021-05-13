@@ -49,7 +49,7 @@ from cylc.flow.exceptions import (
 import cylc.flow.flags
 from cylc.flow.host_select import select_workflow_host
 from cylc.flow.network.hostname import (
-    get_hostname,
+    LOCALHOST,
     is_remote_platform
 )
 from cylc.flow.loggingutil import (
@@ -254,7 +254,7 @@ class Scheduler:
         # flow information
         self.workflow = reg
         self.owner = getuser()
-        self.host = get_hostname()
+        self.host = LOCALHOST
         self.id = f'{self.owner}{ID_DELIM}{self.workflow}'
         self.uuid_str = SchedulerUUID()
         self.options = options

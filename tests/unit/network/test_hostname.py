@@ -20,7 +20,7 @@ import re
 import pytest
 
 from cylc.flow.network.hostname import (
-    get_hostname,
+    LOCALHOST,
     is_remote_host,
     is_remote_platform,
     fqdn,
@@ -34,7 +34,7 @@ def test_is_remote_host_on_localhost():
     assert not is_remote_host(None)
     assert not is_remote_host('localhost')
     assert not is_remote_host(os.getenv('HOSTNAME'))
-    assert not is_remote_host(get_hostname())
+    assert not is_remote_host(LOCALHOST)
 
 
 def test_is_remote_host_invalid():
@@ -44,7 +44,7 @@ def test_is_remote_host_invalid():
 
 @pytest.mark.parametrize(
     'hosts,ret', [
-        ([get_hostname()], False),
+        ([LOCALHOST], False),
         (['nosuchhost.nosuchdomain.org'], True),
         (['localhost', 'nosuchhost.nosuchdomain.org'], True)
     ]
@@ -77,5 +77,5 @@ def test_get_local_ip_address():
     """
     assert re.match(
         r'^[0-9a-fA-F:\.]{3,}$',
-        _get_local_ip_address(get_hostname())
+        _get_local_ip_address(LOCALHOST)
     )

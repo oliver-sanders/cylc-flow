@@ -38,7 +38,7 @@ from cylc.flow.parsec.config import ItemNotFoundError
 
 from cylc.flow import LOG, LOG_LEVELS
 from cylc.flow.cfgspec.glbl_cfg import glbl_cfg
-from cylc.flow.network.hostname import get_hostname, is_remote_host
+from cylc.flow.network.hostname import LOCALHOST, is_remote_host
 from cylc.flow.pathutil import (
     get_remote_workflow_run_job_dir,
     get_workflow_run_job_dir)
@@ -1071,7 +1071,7 @@ class TaskEventsManager():
                     self._get_events_conf(  # mail_from
                         itask,
                         "from",
-                        "notifications@" + get_hostname(),
+                        "notifications@" + LOCALHOST,
                     ),
                     self._get_events_conf(itask, "to", getuser())  # mail_to
                 )
