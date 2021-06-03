@@ -589,7 +589,7 @@ class Resolvers(BaseResolvers):
             ("poll_tasks", (tasks,), {}))
         return (True, 'Command queued')
 
-    def put_ext_trigger(self, message, id):
+    def put_ext_trigger(self, message, id_):
         """Server-side external event trigger interface.
 
         Args:
@@ -605,7 +605,7 @@ class Resolvers(BaseResolvers):
                 Information about outcome.
 
         """
-        self.schd.ext_trigger_queue.put((message, id))
+        self.schd.ext_trigger_queue.put((message, id_))
         return (True, 'Event queued')
 
     def put_messages(self, task_job=None, event_time=None, messages=None):
