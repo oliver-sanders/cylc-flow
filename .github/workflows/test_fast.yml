@@ -17,6 +17,9 @@ jobs:
         include:
           - os: 'macos-latest'
             python-version: '3.7'
+          - os: 'ubuntu-latest'
+            python-version: 'pypy-3.7'
+            opt-deps: 'test'  # building pandas for pypy takes a long time
 
     steps:
       - name: Fudge /etc/hosts
@@ -64,7 +67,8 @@ jobs:
 
       - name: Install
         run: |
-          pip install ."[all]"
+          pip install wheel
+          pip install .[${{ matrix.opt-deps || 'all' }}]
 
       - name: Configure git  # Needed by the odd test
         uses: cylc/release-actions/configure-git@v1
@@ -75,6 +79,7 @@ jobs:
           etc/bin/shellchecker
 
       - name: typing
+        if: startsWith(matrix.python-version, '3')  # not pypy
         run: mypy
 
       - name: Doctests

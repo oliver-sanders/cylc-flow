@@ -57,6 +57,14 @@ jobs:
             test-base: 'tests/f'
             chunk: '1/4'
             platform: '_local_background*'
+          # pypy
+          - name: 'pypy'
+            os: 'ubuntu-latest'
+            python-version: 'pypy-3.7'
+            test-base: 'tests/f'
+            chunk: '1/4'
+            platform: '_local_background*'
+            opt-deps: 'test'  # building pandas for pypy takes a long time
 
     env:
       # Use non-UTC time zone
@@ -126,9 +134,9 @@ jobs:
 
       - name: Install
         run: |
+          pip install wheel
           pip install git+https://github.com/metomi/rose@master
-          pip install -e ."[all]"
-          # pip install --no-deps git+https://github.com/cylc/cylc-rose.git@master
+          pip install -e .[${{ matrix.opt-deps || 'all' }}]
           mkdir "$HOME/cylc-run"
 
       - name: Configure Atrun
