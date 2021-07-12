@@ -23,11 +23,16 @@ If ``matplotlib`` is installed this plugin will plot results as a PDF in
 the run directory when the workflow is shut down (cleanly).
 
 """
+
+from contextlib import suppress
 import json
 from pathlib import Path
 from time import time
 
 from cylc.flow.main_loop import (startup, shutdown, periodic)
+
+
+__doctest_requires__ = {'*': ['pympler', 'matplotlib']}
 
 
 try:
@@ -38,7 +43,13 @@ try:
 except ModuleNotFoundError:
     PLT = False
 
-from pympler.asizeof import asized
+try:
+    from pympler.asizeof import asized
+except ModuleNotFoundError:
+    with suppress(ModuleNotFoundError):
+        import pytest
+        pytest.skip(allow_module_level=True)
+    raise
 
 
 @startup

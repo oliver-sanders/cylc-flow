@@ -19,7 +19,7 @@ jobs:
             python-version: '3.7'
           - os: 'ubuntu-latest'
             python-version: 'pypy-3.7'
-            opt-deps: 'test'  # building pandas for pypy takes a long time
+            opt-deps: 'test-pypy'  # building pandas for pypy takes a long time
 
     steps:
       - name: Fudge /etc/hosts

@@ -47,6 +47,7 @@ the run directory when the workflow is shut down (cleanly).
 
 """
 
+from contextlib import suppress
 import json
 from pathlib import Path
 from time import time
@@ -61,7 +62,13 @@ try:
 except ModuleNotFoundError:
     PLT = False
 
-from pympler.asizeof import asized
+try:
+    from pympler.asizeof import asized
+except ModuleNotFoundError:
+    with suppress(ModuleNotFoundError):
+        import pytest
+        pytest.skip(allow_module_level=True)
+    raise
 
 
 # TODO: make this configurable in the global config

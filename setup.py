@@ -85,7 +85,7 @@ extra_requires = {
         'flake8-mutable>=1.2.0',
         'flake8-simplify>=0.14.0',
         'flake8>=3.0.0',
-        'mypy>=0.900;implementation_name=="cpython"',
+        'mypy>=0.900;implementation_name=="cpython"',  # doesn't support pypy
         # TODO: https://github.com/pytest-dev/pytest-asyncio/issues/ 209
         'pytest-asyncio>=0.15.1',
         'pytest-cov>=2.8.0',
@@ -106,6 +106,18 @@ extra_requires['all'] = list({
     req
     for reqs in extra_requires.values()
     for req in reqs
+})
+extra_requires['test-pypy'] = list({
+    # building pandas for pypy takes a long time
+    req
+    for opt, reqs in extra_requires.items()
+    for req in reqs
+    if opt not in (
+        # optionals deps that do not support pypy
+        'report-timings',
+        'main_loop-log_data_store',
+        'main_loop-log_memory'
+    )
 })
 
 
