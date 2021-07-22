@@ -22,6 +22,7 @@ from copy import deepcopy
 from typing import (
     Any, Dict, Iterable, List, Optional, Tuple, Union, Set)
 
+from cylc.flow import LOG
 from cylc.flow.exceptions import PlatformLookupError, CylcError, NoHostsError
 from cylc.flow.cfgspec.glbl_cfg import glbl_cfg
 from cylc.flow.hostuserutil import is_remote_host
@@ -41,6 +42,20 @@ HOST_SELECTION_METHODS = {
     'definition order': lambda goodhosts: goodhosts[0],
     'random': random.choice
 }
+
+
+def log_platform_event(
+    event: str,
+    platform: dict,
+    host: str = None,
+    level: str = 'info'
+):
+    """Log a simple platform event."""
+    # matches cylc.flow.exceptions.PlatformError format
+    getattr(LOG, level)(
+        f'platform: {platform["name"]} - {event}'
+        + (f' (on {host})' if host else '')
+    )
 
 
 # BACK COMPAT: get_platform

@@ -1,3 +1,9 @@
+[scheduler]
+    [[events]]
+        inactivity = PT1M
+        timeout = PT1M
+        abort on inactivity = true
+        abort on timeout = true
 [task parameters]
     i = 1..5
 [scheduling]

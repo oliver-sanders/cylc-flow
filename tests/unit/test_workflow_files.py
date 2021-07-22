@@ -27,12 +27,11 @@ from cylc.flow import CYLC_LOG
 from cylc.flow import workflow_files
 from cylc.flow.exceptions import (
     CylcError,
+    PlatformError,
     ServiceFileError,
-    TaskRemoteMgmtError,
     UserInputError,
-    WorkflowFilesError
+    WorkflowFilesError,
 )
-from cylc.flow.option_parsers import Options
 from cylc.flow.pathutil import parse_rm_dirs
 from cylc.flow.scripts.clean import CleanOptions
 from cylc.flow.workflow_files import (
@@ -42,14 +41,13 @@ from cylc.flow.workflow_files import (
     check_flow_file,
     check_nested_run_dirs,
     get_rsync_rund_cmd,
-    parse_cli_sym_dirs,
     get_symlink_dirs,
-    is_installed,
-    parse_cli_sym_dirs,
     get_workflow_source_dir,
     glob_in_run_dir,
+    is_installed,
+    parse_cli_sym_dirs,
     reinstall_workflow,
-    search_install_source_dirs
+    search_install_source_dirs,
 )
 
 from .conftest import MonkeyMock
@@ -1118,7 +1116,7 @@ def test_remote_clean(
         mocked_remote_clean_cmd.assert_not_called()
     if failed_platforms:
         for p_name in failed_platforms:
-            assert f"{p_name}: {TaskRemoteMgmtError.MSG_TIDY}" in caplog.text
+            assert f"{p_name} - {PlatformError.MSG_TIDY}" in caplog.text
 
 
 @pytest.mark.parametrize(
