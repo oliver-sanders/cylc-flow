@@ -252,6 +252,20 @@ class TaskRemoteMgr:
                 callback_255_args=[platform]
             )
 
+    def _construct_remote_tidy_ssh_cmd(self, install_target, platform):
+        cmd = ['remote-tidy']
+        if cylc.flow.flags.verbosity > 1:
+            cmd.append('--debug')
+        cmd.append(install_target)
+        cmd.append(get_remote_workflow_run_dir(self.workflow))
+        host = get_host_from_platform(
+            platform, bad_hosts=self.bad_hosts
+        )
+        cmd = construct_ssh_cmd(
+            cmd, platform, host, timeout='10s'
+        )
+        return cmd, host
+
     def remote_tidy(self):
         """Remove workflow contact files and keys from initialised remotes.
 
@@ -260,21 +274,6 @@ class TaskRemoteMgr:
         Timeout any incomplete commands after 10 seconds.
         """
         from cylc.flow.platforms import PlatformLookupError
-        # Issue all SSH commands in parallel
-
-        def construct_remote_tidy_ssh_cmd(install_target, platform):
-            cmd = ['remote-tidy']
-            if cylc.flow.flags.verbosity > 1:
-                cmd.append('--debug')
-            cmd.append(install_target)
-            cmd.append(get_remote_workflow_run_dir(self.workflow))
-            host = get_host_from_platform(
-                platform, bad_hosts=self.bad_hosts
-            )
-            cmd = construct_ssh_cmd(
-                cmd, platform, host, timeout='10s'
-            )
-            return cmd, host
 
         procs = {}
         for install_target, message in self.remote_init_map.items():
@@ -285,7 +284,7 @@ class TaskRemoteMgr:
             platform = get_random_platform_for_install_target(install_target)
             platform_name = platform['name']
             try:
-                cmd, host = construct_remote_tidy_ssh_cmd(
+                cmd, host = self._construct_remote_tidy_ssh_cmd(
                     install_target, platform)
             except (NoHostsError, PlatformLookupError) as exc:
                 LOG.warning(
@@ -317,10 +316,11 @@ class TaskRemoteMgr:
                     log_platform_event(
                         f'remote tidy failed on {host},'
                         ' trying a different host.',
+                        {'name': platform_name},
                         level='warning'
                     )
                     try:
-                        retry_cmd, host = construct_remote_tidy_ssh_cmd(
+                        retry_cmd, host = self._construct_remote_tidy_ssh_cmd(
                             install_target, platform
                         )
                     except (NoHostsError, PlatformLookupError) as exc:
