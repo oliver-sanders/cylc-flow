@@ -50,6 +50,12 @@ jobs:
             python-version: '3.7'
             chunk: '1/1'
             platform: '_remote_background_indep_tcp _remote_at_indep_tcp'
+          - name: 'python-dev'
+            os: 'ubuntu-latest'
+            test-base: 'tests/f tests/k'
+            python-version: '3.10-dev'
+            chunk: '1/4'
+            platform: ['_local_background* _local_at*']
           # macos
           - name: 'macos'
             os: 'macos-latest'
