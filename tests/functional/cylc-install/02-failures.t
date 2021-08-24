@@ -39,7 +39,7 @@ touch flow.cylc
 run_fail "${TEST_NAME}" cylc install
 
 contains_ok "${TEST_NAME}.stderr" <<__ERR__
-WorkflowFilesError: Source directory between runs are not consistent.
+WorkflowFilesError: Source directory not consistent between runs.
 __ERR__
 rm -rf "${PWD:?}/${SOURCE_DIR_1}" "${PWD:?}/${SOURCE_DIR_2}"
 rm -rf "${RUN_DIR:?}/${TEST_NAME_BASE}"
