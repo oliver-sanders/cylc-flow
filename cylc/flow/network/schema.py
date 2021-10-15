@@ -400,8 +400,8 @@ async def get_workflow_by_id(root, info, **args):
     _, workflow = process_resolver_info(root, info, args)
     if workflow is not None:
         args['id'] = workflow.id
-
-    args['workflow'] = args['id']
+    if 'id' in args:
+        args['workflow'] = args['id']
     resolvers = info.context.get('resolvers')
     return await resolvers.get_workflow_by_id(args)
 
