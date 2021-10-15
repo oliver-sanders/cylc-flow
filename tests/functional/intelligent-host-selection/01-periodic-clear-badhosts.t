@@ -66,7 +66,7 @@ named_grep_ok "periodic clearance message" \
 
 # job log retrieval failed on the definition order attempt (us):
 named_grep_ok "definition order job log retrieval fails" \
-    "\"job-logs-retrieve\" failed because \"unreachable_host\" is not available right now" \
+    "job-logs-retrieve will retry if another host is available." \
     "${WORKFLOW_RUN_DIR}/log/workflow/log"
 
 # job-log retrival actually works:
@@ -81,8 +81,9 @@ job.xtrace
 __HERE__
 
 # remote tidy fails definition order time round"
-named_grep_ok "definition order remote tidy fails" \
-    "Failed to tidy remote platform 'mixedhostplatform' using host 'unreachable_host'; trying new host '${CYLC_TEST_HOST}'" \
+named_grep_ok \
+    "definition order remote tidy fails" \
+    "remote tidy failed on unreachable_host, trying a different host" \
     "${WORKFLOW_RUN_DIR}/log/workflow/log"
 
 purge "${WORKFLOW_NAME}" "mixedhostplatform"
