@@ -37,7 +37,6 @@ from cylc.flow.platforms import (
     get_platform,
 )
 from cylc.flow.task_events_mgr import TaskJobLogsRetrieveContext
-from cylc.flow.util import format_cmd
 from cylc.flow.wallclock import get_current_time_string
 
 _XTRIG_FUNCS: dict = {}

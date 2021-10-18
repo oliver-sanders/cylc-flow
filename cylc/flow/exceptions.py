@@ -217,6 +217,7 @@ class PlatformError(CylcError):
                     ret += f"\n    {line}"
         return ret
 
+
 class TaskDefError(WorkflowConfigError):
     """Exception raise for errors in TaskDef initialization."""
 
