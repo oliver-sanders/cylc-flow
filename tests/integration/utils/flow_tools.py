@@ -109,24 +109,40 @@ async def _run_flow(
     # install
     await schd.install()
 
+    import sys
+    from time import time
+    def log(msg):
+        print(f'# {time()} {msg} {schd.workflow}', file=sys.stderr)
+
     # start
     try:
+        log('start')
         await schd.start()
+        log('/start')
     except Exception as exc:
+        log('stop1')
         async with timeout(5):
             await schd.shutdown(exc)
+            log('/stop1')
     # run
     try:
+        log('run')
         task = asyncio.get_event_loop().create_task(schd.run_scheduler())
         yield caplog
+        log('/run')
 
     # stop
     finally:
+        log('stop2')
         async with timeout(5):
             # ask the scheduler to shut down nicely
             schd._set_stop(StopMode.REQUEST_NOW_NOW)
+            log('wait')
             await task
+            log('/wait')
 
         if task:
             # leave everything nice and tidy
+            log('cancel')
             task.cancel()
+            log('/cancel')
