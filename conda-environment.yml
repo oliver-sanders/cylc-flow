@@ -23,3 +23,5 @@ dependencies:
   #- pandas >=1.0,<2
   #- pympler
   #- matplotlib-base
+  #- pillow
+  #- urllib3

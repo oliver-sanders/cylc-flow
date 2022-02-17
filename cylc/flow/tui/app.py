@@ -16,6 +16,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """The application control logic for Tui."""
 
+from multiprocessing import Process
 import sys
 
 import urwid
@@ -34,9 +35,6 @@ from cylc.flow.task_state import (
     TASK_STATUS_RUNNING,
     TASK_STATUS_FAILED,
 )
-from cylc.flow.tui.data import (
-    QUERY
-)
 import cylc.flow.tui.overlay as overlay
 from cylc.flow.tui import (
     BINDINGS,
@@ -44,6 +42,9 @@ from cylc.flow.tui import (
     BACK,
     JOB_COLOURS,
     WORKFLOW_COLOURS,
+)
+from cylc.flow.tui.update import (
+    Updater,
 )
 from cylc.flow.tui.tree import (
     find_closest_focus,
@@ -246,10 +247,17 @@ class TuiApp:
             header=urwid.AttrWrap(header, 'head'),
             footer=footer
         )
+        self.updater = Updater(
+            self.reg,
+            timeout=self.CLIENT_TIMEOUT,
+            sleep_time=1,
+        )
         self.filter_states = {
             state: True
             for state in TASK_STATUSES_ORDERED
         }
+        self.updater.queues.filter.put(self.filter_states)
+        self.updater.start()
         if isinstance(screen, html_fragment.HtmlGenerator):
             # the HtmlGenerator only captures one frame
             # so we need to pre-populate the GUI before
@@ -281,61 +289,6 @@ class TuiApp:
                 meth, *args = binding['callback']
                 meth(self, *args)
                 return
-
-    def get_snapshot(self):
-        """Contact the workflow, return a tree structure
-
-        In the event of error contacting the workflow the
-        message is written to this Widget's header.
-
-        Returns:
-            dict if successful, else False
-
-        """
-        try:
-            if not self.client:
-                self.client = get_client(self.reg, timeout=self.CLIENT_TIMEOUT)
-            data = self.client(
-                'graphql',
-                {
-                    'request_string': QUERY,
-                    'variables': {
-                        # list of task states we want to see
-                        'taskStates': [
-                            state
-                            for state, is_on in self.filter_states.items()
-                            if is_on
-                        ]
-                    }
-                }
-            )
-        except WorkflowStopped:
-            self.client = None
-            return dummy_flow({
-                'name': self.reg,
-                'id': self.reg,
-                'status': 'stopped',
-                'stateTotals': {}
-            })
-        except (ClientError, ClientTimeout) as exc:
-            # catch network / client errors
-            self.set_header([('workflow_error', str(exc))])
-            return False
-
-        if isinstance(data, list):
-            # catch GraphQL errors
-            try:
-                message = data[0]['error']['message']
-            except (IndexError, KeyError):
-                message = str(data)
-            self.set_header([('workflow_error', message)])
-            return False
-
-        if len(data['workflows']) != 1:
-            # multiple workflows in returned data - shouldn't happen
-            raise ValueError()
-
-        return compute_tree(data['workflows'][0])
 
     @staticmethod
     def get_node_id(node):
@@ -379,6 +332,9 @@ class TuiApp:
             self.update()
         except Exception as exc:
             sys.exit(exc)
+        # schedule the next run of this update method
+        if self.loop:
+            self.loop.set_alarm_in(self.UPDATE_INTERVAL, self._update)
 
     def update(self):
         """Refresh the data and redraw this widget.
@@ -389,17 +345,21 @@ class TuiApp:
         # update the data store
         # TODO: this can be done incrementally using deltas
         #       once this interface is available
-        snapshot = self.get_snapshot()
-        if snapshot is False:
-            return False
+        print(f'# {self.updater.queues.data.qsize()}')
+        if self.updater.queues.data.empty():
+            return True
+
+
+        header, snapshot = self.updater.queues.data.get()
 
         # update the workflow status message
-        header = [get_workflow_status_str(snapshot['data'])]
-        status_summary = get_task_status_summary(snapshot['data'])
-        if status_summary:
-            header.extend([' ('] + status_summary + [' )'])
-        if not all(self.filter_states.values()):
-            header.extend([' ', '*filtered* "R" to reset', ' '])
+        if not header:
+            header = [get_workflow_status_str(snapshot['data'])]
+            status_summary = get_task_status_summary(snapshot['data'])
+            if status_summary:
+                header.extend([' ('] + status_summary + [' )'])
+            if not all(self.filter_states.values()):
+                header.extend([' ', '*filtered* "R" to reset', ' '])
         self.set_header(header)
 
         # global update - the nuclear option - slow but simple
@@ -427,10 +387,6 @@ class TuiApp:
         #  preserve the collapse/expand status of all nodes
         translate_collapsing(self, old_node, new_node)
 
-        # schedule the next run of this update method
-        if self.loop:
-            self.loop.set_alarm_in(self.UPDATE_INTERVAL, self._update)
-
         return True
 
     def filter_by_task_state(self, filtered_state=None):
@@ -445,6 +401,7 @@ class TuiApp:
             state: (state == filtered_state) or not filtered_state
             for state in self.filter_states
         }
+        self.updater.queue.filter.put(self.filter_states)
         return
 
     def open_overlay(self, fcn):
