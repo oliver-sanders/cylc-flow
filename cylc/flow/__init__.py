@@ -38,6 +38,8 @@ LOG_LEVELS = {
     "DEBUG": logging.DEBUG,
 }
 
+DOC_URL = 'https://cylc.github.io/cylc-doc/latest/html'
+
 
 def environ_init():
     """Initialise cylc environment."""

@@ -23,7 +23,7 @@ from typing import Any, Dict, Optional, Set
 
 from metomi.isodatetime.data import Calendar
 
-from cylc.flow import LOG
+from cylc.flow import LOG, DOC_URL
 from cylc.flow.cfgspec.globalcfg import EVENTS_DESCR, REPLACES
 from cylc.flow.parsec.exceptions import UpgradeError
 from cylc.flow.parsec.config import ParsecConfig, ConfigNode as Conf
@@ -94,6 +94,7 @@ def get_script_common_text(this: str, example: Optional[str] = None):
 
 with Conf(
     'flow.cylc',
+    doc_url=f'{DOC_URL}/reference/config/workflow.html',
     desc='''
         Defines a Cylc workflow configuration.
 

@@ -17,9 +17,10 @@
 import logging
 import pytest
 from typing import Any, Dict, Optional
+import urllib3
 
 from cylc.flow import CYLC_LOG
-from cylc.flow.cfgspec.workflow import warn_about_depr_platform
+from cylc.flow.cfgspec.workflow import warn_about_depr_platform, SPEC
 from cylc.flow.exceptions import PlatformLookupError
 
 
@@ -87,3 +88,16 @@ def test_warn_about_depr_platform(
             assert expected_warning in caplog.text
         else:
             assert caplog.record_tuples == []
+
+
+def test_url():
+    http = urllib3.PoolManager()
+    for config in [
+        # base config
+        SPEC,
+        # config with a space
+        SPEC['scheduling']['initial cycle point'],
+        # user-defined config
+        SPEC['runtime']['__MANY__'],
+    ]:
+        assert http.request('GET', config.url).status == 200

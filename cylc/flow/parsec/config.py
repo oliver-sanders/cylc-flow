@@ -17,7 +17,8 @@
 from copy import deepcopy
 import re
 from textwrap import dedent
-from typing import List
+from typing import List, Optional
+from urllib.parse import quote_plus
 
 from cylc.flow.context_node import ContextNode
 from cylc.flow.parsec.exceptions import (
@@ -249,17 +250,18 @@ class ConfigNode(ContextNode):
     UNSET = '*value unset*'
 
     __slots__ = ContextNode.__slots__ + (
-        'vdr', 'options', 'default', 'desc', 'display_name', 'meta'
+        'vdr', 'options', 'default', 'desc', 'display_name', 'meta', 'doc_url'
     )
 
     def __init__(
-            self,
-            name,
-            vdr=VDR.V_STRING,
-            default=UNSET,
-            options=None,
-            desc=None,
-            meta=None
+        self,
+        name,
+        vdr=VDR.V_STRING,
+        default=UNSET,
+        options=None,
+        desc=None,
+        meta=None,
+        doc_url=None
     ):
         display_name = name
         if name.startswith('<'):
@@ -284,6 +286,7 @@ class ConfigNode(ContextNode):
         self.options = options
         self.desc = dedent(desc).strip() if desc else None
         self.meta = meta
+        self.doc_url = doc_url
 
     def __repr__(self):
         parents = list(self.parents())
@@ -291,3 +294,12 @@ class ConfigNode(ContextNode):
         if len(parents) == 1 and self.is_leaf():
             itr.insert(1, '|')
         return ''.join(map(str, itr))
+
+    @property
+    def url(self) -> Optional[str]:
+        """Return a URL to the config entry in the docs or None."""
+        for node in [self] + list(self.parents()):
+            if node.doc_url:
+                return f'{node.doc_url}#{quote_plus(repr(self))}'
+        else:
+            return None

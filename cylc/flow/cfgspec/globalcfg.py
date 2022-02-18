@@ -22,7 +22,7 @@ from typing import List, Optional, Tuple, Any
 from contextlib import suppress
 from pkg_resources import parse_version
 
-from cylc.flow import LOG
+from cylc.flow import LOG, DOC_URL
 from cylc.flow import __version__ as CYLC_VERSION
 from cylc.flow.exceptions import GlobalConfigError
 from cylc.flow.hostuserutil import get_user_home
@@ -224,7 +224,10 @@ EVENTS_DESCR = {
 }
 
 
-with Conf('global.cylc', desc='''
+with Conf(
+    'global.cylc',
+    doc_url=f'{DOC_URL}/reference/config/global.html',
+    desc='''
     The global configuration which defines default Cylc Flow settings
     for a user or site.
 

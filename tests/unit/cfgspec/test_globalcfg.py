@@ -16,9 +16,9 @@
 """Tests for the Cylc GlobalConfig object."""
 
 from cylc.flow.cfgspec.globalcfg import GlobalConfig, SPEC
-from io import StringIO
 
 import pytest
+import urllib3
 
 TEST_CONF = '''
     [platforms]
@@ -58,3 +58,16 @@ def test_dump_platform_details(capsys, fake_global_conf):
         '[platform groups]\n    [[BAR]]\n        platforms = mario, sonic\n'
     )
     assert expected == out
+
+
+def test_url():
+    http = urllib3.PoolManager()
+    for config in [
+        # base config
+        SPEC,
+        # config with a space
+        SPEC['scheduler']['UTC mode'],
+        # user-defined config
+        SPEC['scheduler']['main loop']['__MANY__'],
+    ]:
+        assert http.request('GET', config.url).status == 200
