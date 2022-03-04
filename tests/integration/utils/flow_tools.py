@@ -79,21 +79,22 @@ async def _start_flow(
     level: int = logging.INFO
 ):
     """Start a scheduler but don't set it running."""
-    if caplog:
-        caplog.set_level(level, CYLC_LOG)
+    async with timeout(10):
+        if caplog:
+            caplog.set_level(level, CYLC_LOG)
 
-    # install
-    await schd.install()
+        # install
+        await schd.install()
 
-    # start
-    try:
-        await schd.start()
-        yield caplog
+        # start
+        try:
+            await schd.start()
+            yield caplog
 
-    # stop
-    finally:
-        async with timeout(5):
-            await schd.shutdown(SchedulerStop("that'll do"))
+        # stop
+        finally:
+            async with timeout(5):
+                await schd.shutdown(SchedulerStop("that'll do"))
 
 
 @asynccontextmanager
@@ -103,30 +104,31 @@ async def _run_flow(
     level: int = logging.INFO
 ):
     """Start a scheduler and set it running."""
-    if caplog:
-        caplog.set_level(level, CYLC_LOG)
+    async with timeout(10):
+        if caplog:
+            caplog.set_level(level, CYLC_LOG)
 
-    # install
-    await schd.install()
+        # install
+        await schd.install()
 
-    # start
-    try:
-        await schd.start()
-    except Exception as exc:
-        async with timeout(5):
-            await schd.shutdown(exc)
-    # run
-    try:
-        task = asyncio.create_task(schd.run_scheduler())
-        yield caplog
+        # start
+        try:
+            await schd.start()
+        except Exception as exc:
+            async with timeout(5):
+                await schd.shutdown(exc)
+        # run
+        try:
+            task = asyncio.create_task(schd.run_scheduler())
+            yield caplog
 
-    # stop
-    finally:
-        async with timeout(5):
-            # ask the scheduler to shut down nicely
-            schd._set_stop(StopMode.REQUEST_NOW_NOW)
-            await task
+        # stop
+        finally:
+            async with timeout(5):
+                # ask the scheduler to shut down nicely
+                schd._set_stop(StopMode.REQUEST_NOW_NOW)
+                await task
 
-        if task:
-            # leave everything nice and tidy
-            task.cancel()
+            if task:
+                # leave everything nice and tidy
+                task.cancel()
