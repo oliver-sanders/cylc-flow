@@ -26,6 +26,7 @@ import asyncio
 
 def _rm_if_empty(path):
     """Convenience wrapper for removing empty directories."""
+    return  # disable teardown
     try:
         path.rmdir()
     except OSError:

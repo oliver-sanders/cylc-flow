@@ -106,7 +106,8 @@ def mod_test_dir(request, ses_test_dir):
     yield path
     if _pytest_passed(request):
         # test passed -> remove all files
-        rmtree(path, ignore_errors=False)
+        # rmtree(path, ignore_errors=False)
+        pass
     else:
         # test failed -> remove the test dir if empty
         _rm_if_empty(path)
@@ -120,7 +121,8 @@ def test_dir(request, mod_test_dir):
     yield path
     if _pytest_passed(request):
         # test passed -> remove all files
-        rmtree(path, ignore_errors=False)
+        # rmtree(path, ignore_errors=False)
+        pass
     else:
         # test failed -> remove the test dir if empty
         _rm_if_empty(path)
