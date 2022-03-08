@@ -14,8 +14,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from async_timeout import timeout
-import asyncio
+"""Test WorkflowRuntimeServer endpoints."""
+
 from getpass import getuser
 
 import pytest
@@ -76,50 +76,3 @@ def test_pb_entire_workflow(myflow):
         )
     )
     assert data.workflow.id == myflow.id
-
-
-async def test_listener(one, start):
-    """Test listener."""
-    async with start(one):
-        one.server.queue.put('STOP')
-        async with timeout(2):
-            # wait for the server to consume the STOP item from the queue
-            while True:
-                if one.server.queue.empty():
-                    break
-                await asyncio.sleep(0.01)
-        # ensure the server is "closed"
-        with pytest.raises(ValueError):
-            one.server.queue.put('foobar')
-            one.server._listener()
-
-
-async def test_receiver(one, start):
-    """Test the receiver with different message objects."""
-    async with timeout(5):
-        async with start(one):
-            # start with a message that works
-            msg = {'command': 'api', 'user': '', 'args': {}}
-            assert 'error' not in one.server._receiver(msg)
-            assert 'data' in one.server._receiver(msg)
-
-            # remove the user field - should error
-            msg2 = dict(msg)
-            msg2.pop('user')
-            assert 'error' in one.server._receiver(msg2)
-
-            # remove the command field - should error
-            msg3 = dict(msg)
-            msg3.pop('command')
-            assert 'error' in one.server._receiver(msg3)
-
-            # provide an invalid command - should error
-            msg4 = {**msg, 'command': 'foobar'}
-            assert 'error' in one.server._receiver(msg4)
-
-            # simulate a command failure with the original message
-            # (the one which worked earlier) - should error
-            def _api(*args, **kwargs):
-                raise Exception('foo')
-            one.server.api = _api
-            assert 'error' in one.server._receiver(msg)

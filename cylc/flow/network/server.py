@@ -131,6 +131,9 @@ class WorkflowRuntimeServer(ZMQSocketBase):
 
     """
 
+    _STOP = 'STOP'
+    """The signal to send the server to tell it to shutdown."""
+
     def __init__(self, schd, context=None, barrier=None,
                  threaded=True, daemon=False):
         super().__init__(zmq.REP, bind=True, context=context,
@@ -177,15 +180,17 @@ class WorkflowRuntimeServer(ZMQSocketBase):
         LOG.debug('stopping zmq server...')
         self.stopping = True
         if self.queue is not None:
-            self.queue.put('STOP')
+            self.queue.put(self._STOP)
 
     def _listener(self) -> None:
         """The server main loop, listen for and serve requests."""
         while True:
+            sleep(0)  # yield control to other threads
+
             # process any commands passed to the listener by its parent process
             if self.queue.qsize():
                 command = self.queue.get()
-                if command == 'STOP':
+                if command == self._STOP:
                     break
                 raise ValueError('Unknown command "%s"' % command)
 
@@ -222,8 +227,6 @@ class WorkflowRuntimeServer(ZMQSocketBase):
             # self.curve_auth, self.socket.curve_...key etc.). We have set up
             # public-key cryptography on the ZMQ messaging and sockets, so
             # there is no need to encrypt messages ourselves before sending.
-
-            sleep(0)  # yield control to other threads
 
     def _receiver(self, message):
         """Wrap incoming messages and dispatch them to exposed methods.
