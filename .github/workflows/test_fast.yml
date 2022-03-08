@@ -9,14 +9,12 @@ on:
 jobs:
   test:
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 15
+    timeout-minutes: 25
     strategy:
       matrix:
-        os: ['ubuntu-latest']
-        python-version: ['3.7', '3.8', '3.9']
-        include:
-          - os: 'macos-latest'
-            python-version: '3.7'
+        os: ['macos-latest']
+        python-version: ['3.7']
+        number: ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10']
     env:
       PYTEST_ADDOPTS: --cov --cov-append -n 5 --color=yes
 
@@ -33,7 +31,7 @@ jobs:
         if: startsWith(matrix.os, 'macos')
         run: |
           brew update
-          brew install shellcheck sqlite3 bash coreutils
+          brew install shellcheck bash coreutils
 
           # add GNU coreutils and sed to the user PATH
           # (see instructions in brew install output)
