@@ -25,6 +25,7 @@ from metomi.isodatetime.data import Calendar
 
 from cylc.flow import LOG
 from cylc.flow.cfgspec.globalcfg import EVENTS_DESCR, REPLACES
+from cylc.flow.doc import STD_LABEL_MAJORCHANGESPLATFORMS
 from cylc.flow.parsec.exceptions import UpgradeError
 from cylc.flow.parsec.config import ParsecConfig, ConfigNode as Conf
 from cylc.flow.parsec.OrderedDict import OrderedDictWithDefaults
@@ -1838,6 +1839,7 @@ def upg(cfg, descr):
                     "Currently, this item will override the corresponding "
                     "item in global.cylc, "
                     "but support for this will be removed in Cylc 9."
+                    '\nSee {STD_LABEL_MAJORCHANGESPLATFORMS}'
                 )
 
 
@@ -1933,6 +1935,7 @@ def warn_about_depr_platform(cfg):
                 LOG.warning(
                     f'Task {task_name}: deprecated "host" and "batch system" '
                     f'will be removed at Cylc 9 - upgrade to platform:\n{msg}'
+                    '\nSee {STD_LABEL_MAJORCHANGESPLATFORMS}'
                 )
 
 

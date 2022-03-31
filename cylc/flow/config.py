@@ -54,6 +54,10 @@ from cylc.flow.cycling.loader import (
     get_sequence, get_sequence_cls, init_cyclers, get_dump_format,
     INTEGER_CYCLING_TYPE, ISO8601_CYCLING_TYPE
 )
+from cylc.flow.doc import (
+    CYLC_SETTING_FLOW_CYLC_SCHEDULER_ALLOW_IMPLICIT_TASKS,
+    STD_LABEL_CYLC_7_COMPAT_MODE,
+)
 from cylc.flow.id import Tokens
 from cylc.flow.cycling.integer import IntegerInterval
 from cylc.flow.cycling.iso8601 import ingest_time, ISO8601Interval
@@ -165,10 +169,8 @@ class WorkflowConfig:
     VIS_N_POINTS = 3
 
     CYLC7_GRAPH_COMPAT_MSG = (
-        "Cylc 7 graph compatibility: making success outputs 'required' (to"
-        " retain failed tasks in the pool) and pre-spawning graph children (to"
-        " replicate Cylc 7 stall behaviour). Please refer to documentation on"
-        " upgrading Cylc 7 graphs to Cylc 8."
+        'Cylc 7 compatibility mode is on, making :succeed outputs "required".'
+        f'\nSee {STD_LABEL_CYLC_7_COMPAT_MODE}'
     )
 
     def __init__(
@@ -802,8 +804,7 @@ class WorkflowConfig:
             f"{msg}\n"
             "To allow implicit tasks, use "
             f"'{WorkflowFiles.FLOW_FILE}[scheduler]allow implicit tasks'\n"
-            "See https://cylc.github.io/cylc-doc/latest/html/"
-            "7-to-8/summary.html#backward-compatibility"
+            f'See {CYLC_SETTING_FLOW_CYLC_SCHEDULER_ALLOW_IMPLICIT_TASKS}'
         )
         # Allow implicit tasks in Cylc 7 back-compat mode (but not if
         # rose-suite.conf present, to maintain compat with Rose 2019)
@@ -2008,7 +2009,7 @@ class WorkflowConfig:
 
         # Parse and process each graph section.
         if cylc.flow.flags.cylc7_back_compat:
-            LOG.warning(self.__class__.CYLC7_GRAPH_COMPAT_MSG)
+            LOG.warning(self.CYLC7_GRAPH_COMPAT_MSG)
         task_triggers = {}
         task_output_opt = {}
         for section, graph in sections:

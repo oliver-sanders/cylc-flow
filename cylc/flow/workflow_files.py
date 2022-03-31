@@ -41,6 +41,7 @@ import zmq.auth
 import cylc.flow.flags
 from cylc.flow import LOG
 from cylc.flow.cfgspec.glbl_cfg import glbl_cfg
+from cylc.flow.doc import STD_LABEL_CYLC_7_COMPAT_MODE
 from cylc.flow.exceptions import (
     CylcError,
     PlatformError,
@@ -340,19 +341,16 @@ To start a new run, stop the old one first with one or more of these:
 """
 
 SUITERC_DEPR_MSG = (
-    f"Backward compatibility mode ON for CYLC 7 '{WorkflowFiles.SUITE_RC}'"
-    " files: please address deprecation warnings and upgrade to Cylc 8 graph"
-    f" syntax BEFORE renaming the file to '{WorkflowFiles.FLOW_FILE}'.\n"
+    f"Cylc 7 compatibility mode is on."
+    "\nPlease address deprecation warnings and upgrade to Cylc 8 graph"
+    f" syntax BEFORE renaming '{WorkflowFiles.SUITE_RC}' to "
+    f"'{WorkflowFiles.FLOW_FILE}'.\n"
+    f"See {STD_LABEL_CYLC_7_COMPAT_MODE}"
 )
 
 NO_FLOW_FILE_MSG = (
     f"No {WorkflowFiles.FLOW_FILE} or {WorkflowFiles.SUITE_RC} "
     "in {}"
-)
-
-REG_CLASH_MSG = (
-    "The specified reg could refer to ./{0} or ~/cylc-run/{1}. "
-    "This command will use ./{0}."
 )
 
 NESTED_DIRS_MSG = (
