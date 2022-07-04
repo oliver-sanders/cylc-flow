@@ -39,6 +39,11 @@ LOGOS = [
         '   <yellow>◉</yellow><blue>● </blue>',
         '  <green>⬤ </green>  ',
         '  <red>•</red>   ',
+    ],
+    [
+        "  <yellow>▪</yellow> <blue>■ </blue>",
+        "  <green>██</green>  ",
+        " <red>▝▘</red>   ",
     ]
 ]
 # fmt: on
