@@ -18,47 +18,30 @@
 
 from itertools import zip_longest
 from ansimarkup import strip
+from random import randint
 
 from cylc.flow import __version__
 from cylc.flow.scripts import _copyright_year
 from cylc.flow.terminal import get_width
 
+job1 = '<red>■ </red>'
+job2 = '<blue>■ </blue>'
+job3 = '<green>■ </green>'
 
 # fmt: off
-LOGO_LETTERS = (
-    (
-        '▗███',
-        '██  ',
-        '▝███',
-    ),
-    (
-        '▝█▙ ▟█▘',
-        '  ▜█▛  ',
-        '  ▐█▌  ',
-    ),
-    (
-        '▐█  ',
-        '▐█  ',
-        '▐██▌',
-    ),
-    (
-        '▗███▙ ',
-        '██    ',
-        '▝███▛ ',
-    )
-)
-# fmt: on
-
-LOGO = [
-    ''.join(
-        f'<{tag}>{letter[ind]}</{tag}>'
-        for tag, letter in zip(
-            ('red', 'yellow', 'green', 'blue'),
-            LOGO_LETTERS
-        )
-    )
-    for ind in range(len(LOGO_LETTERS[0]))
+LOGOS = [
+    [
+        f"○ {job1}⊘ ",
+        f"{job2}⊚ ◔ ",
+        f"⊗ {job3}● ",
+    ],
+    [
+        '   <yellow>◉</yellow><blue>● </blue>',
+        '  <green>⬤ </green>  ',
+        '  <red>•</red>   ',
+    ]
 ]
+# fmt: on
 
 CYLC = (
     "<b>"
@@ -80,6 +63,7 @@ LICENSE = [
 
 def cylc_header(width=None):
     """Print copyright and license information."""
+    LOGO = LOGOS[randint(0, len(LOGOS) - 1)]
     width = width or get_width()
     lmax = (
         max(len(strip(line)) for line in LICENSE) +
