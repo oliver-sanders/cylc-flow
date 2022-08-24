@@ -528,14 +528,24 @@ class CylcReviewService(object):
     def get_file(self, user, suite, path, path_in_tar=None, mode=None):
         """Returns file information / content or a cherrypy response."""
         suite = suite.replace('%2F', '/')
+        print '#2', {
+            'user': user,
+            'suite': suite,
+            'path': path,
+            'path_in_tar': path_in_tar,
+            'mode': mode,
+        }
         f_name = self._get_user_suite_dir(user, suite, path)
+        print '#2 f_name =', f_name
         self._check_file_path(path)
         view_size_max = self.VIEW_SIZE_MAX
         if path_in_tar:
+            print '#2.1'
             tar_f = tarfile.open(f_name, "r:gz")
             try:
                 tar_info = tar_f.getmember(path_in_tar)
             except KeyError:
+                print '$404:1'
                 raise cherrypy.HTTPError(404)
             f_size = tar_info.size
             handle = tar_f.extractfile(path_in_tar)
@@ -563,6 +573,7 @@ class CylcReviewService(object):
                     temp_f.close()
             text = handle.read()
         else:
+            print '#2.2'
             f_size = os.stat(f_name).st_size
             if open(f_name).read(2) == "#!":
                 mime = self.MIME_TEXT_PLAIN
@@ -578,10 +589,12 @@ class CylcReviewService(object):
                 return cherrypy.lib.static.serve_file(f_name, mime)
             text = open(f_name).read()
         try:
+            print '#2.3'
             if mode in [None, "text"]:
                 text = jinja2.escape(text)
             lines = [unicode(line) for line in text.splitlines()]
         except UnicodeDecodeError:
+            print '#2.4'
             if path_in_tar:
                 handle.seek(0)
                 # file closed by cherrypy
@@ -591,13 +604,16 @@ class CylcReviewService(object):
                 return cherrypy.lib.static.serve_file(
                     f_name, self.MIME_TEXT_PLAIN)
         else:
+            print '#2.5'
             if path_in_tar:
                 handle.close()
         name = path
         if path_in_tar:
+            print '#2.6'
             name = "log/" + path_in_tar
         job_entry = None
         if name.startswith("log/job"):
+            print '#2.7'
             names = name.replace("log/job/", "").split("/", 3)
             if len(names) == 4:
                 cycle, task, submit_num, _ = names
@@ -612,10 +628,14 @@ class CylcReviewService(object):
             fnmatch(os.path.basename(path), "suite*.rc*")
             or fnmatch(os.path.basename(path), "*.cylc")
         ):
+        if fnmatch(os.path.basename(path), "suite*.rc*"):
+            print '#2.8'
             file_content = "cylc-suite-rc"
         elif fnmatch(os.path.basename(path), "rose*.conf"):
+            print '#2.9'
             file_content = "rose-conf"
         else:
+            print '#2.10'
             file_content = None
 
         return lines, job_entry, file_content, f_name
@@ -635,13 +655,24 @@ class CylcReviewService(object):
                    search_string=None, search_mode=None):
         """Search a text log file."""
         # get file or serve raw data
+        print '#1', {
+            'user': user,
+            'suite': suite,
+            'path': path,
+            'path_in_tar': path_in_tar,
+            'mode': mode,
+            'search_string': search_string,
+            'search_mode': search_mode,
+        }
         suite = urllib.unquote(suite)
         file_output = self.get_file(
             user, suite, path, path_in_tar=path_in_tar, mode=mode)
         if isinstance(file_output, tuple):
+            print '#1.1'
             lines, _, file_content, _ = self.get_file(
                 user, suite, path, path_in_tar=path_in_tar, mode=mode)
         else:
+            print '#1.2'
             return file_output
 
         template = self.template_env.get_template("view-search.html")
@@ -825,6 +856,7 @@ class CylcReviewService(object):
 
         """
         if not os.path.exists(path):
+            print '$404:2'
             raise cherrypy.HTTPError(
                 404, 'Path {path} does not exist'.format(path=path))
         if not os.access(path, os.R_OK):
@@ -844,6 +876,7 @@ class CylcReviewService(object):
         try:
             return pwd.getpwnam(user).pw_dir
         except KeyError:
+            print '$404:3'
             raise cherrypy.HTTPError(404)
 
     def _get_user_suite_dir_root(self, user):
