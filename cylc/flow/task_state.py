@@ -225,16 +225,24 @@ class TaskState:
         self.is_runahead = True
         self.is_updated = False
         self.time_updated = None
-
         self._is_satisfied = None
         self._suicide_is_satisfied = None
+        self.prerequisites = []
+        self.suicide_prerequisites = []
+        self.xtriggers = {}
+        self.outputs = TaskOutputs(tdef)
+        self.kill_failed = False
 
-        # Prerequisites.
+        self.reload(tdef, point)
+
+    def reload(self, tdef, point):
+        # Prerequisites (wipe and rebuild)
         self.prerequisites = []
         self.suicide_prerequisites = []
         self._add_prerequisites(point, tdef)
+        self.prerequisites_all_satisfied()
 
-        # External Triggers.
+        # External Triggers (wipe and rebuild)
         self.external_triggers = {}
         for ext in tdef.external_triggers:
             # Allow cycle-point-specific external triggers - GitHub #1893.
@@ -243,13 +251,13 @@ class TaskState:
             # set unsatisfied
             self.external_triggers[ext] = False
 
-        # xtriggers (represented by labels) satisfied or not
-        self.xtriggers = {}
+        # Xtriggers (update)
+        # NOTE: don't wipe xtriggers as they can be added at runtime
         self._add_xtriggers(point, tdef)
 
-        # Message outputs.
-        self.outputs = TaskOutputs(tdef)
-        self.kill_failed = False
+        # Message outputs (update)
+        # NOTE: don't wipe outputs as they are updated at runtime
+        self.outputs.reload(tdef)
 
     def __str__(self):
         """Print status(is_held)(is_queued)(is_runahead)."""

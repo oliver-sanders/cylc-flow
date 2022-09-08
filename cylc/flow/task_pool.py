@@ -867,9 +867,9 @@ class TaskPool:
         for itask in tasks:
             if itask.tdef.name in self.orphans:
                 if (
-                        itask.state(TASK_STATUS_WAITING)
-                        or itask.state.is_held
-                        or itask.state.is_queued
+                    itask.state(TASK_STATUS_WAITING)
+                    or itask.state.is_held
+                    or itask.state.is_queued
                 ):
                     # Remove orphaned task if it hasn't started running yet.
                     self.remove(itask, 'task definition removed')
@@ -881,21 +881,28 @@ class TaskPool:
                         "- task definition removed"
                     )
             else:
-                new_task = TaskProxy(
-                    self.config.get_taskdef(itask.tdef.name),
-                    itask.point, itask.flow_nums, itask.state.status)
-                itask.copy_to_reload_successor(new_task)
-                self._swap_out(new_task)
-                LOG.info(f"[{itask}] reloaded task definition")
-                if itask.state(*TASK_STATUSES_ACTIVE):
+                if itask.state(TASK_STATUS_PREPARING, *TASK_STATUSES_ACTIVE):
                     LOG.warning(
                         f"[{itask}] active with pre-reload settings"
                     )
-                elif itask.state(TASK_STATUS_PREPARING):
-                    # Job file might have been written at this point?
-                    LOG.warning(
-                        f"[{itask}] may be active with pre-reload settings"
-                    )
+                else:
+                    itask.reload(self.config.get_taskdef(itask.tdef.name))
+                    LOG.info(f"[{itask}] reloaded task definition")
+                # new_task = TaskProxy(
+                #     self.config.get_taskdef(itask.tdef.name),
+                #     itask.point, itask.flow_nums, itask.state.status)
+                # itask.copy_to_reload_successor(new_task)
+                # self._swap_out(new_task)
+                # LOG.info(f"[{itask}] reloaded task definition")
+                # if itask.state(*TASK_STATUSES_ACTIVE):
+                #     LOG.warning(
+                #         f"[{itask}] active with pre-reload settings"
+                #     )
+                # elif itask.state(TASK_STATUS_PREPARING):
+                #     # Job file might have been written at this point?
+                #     LOG.warning(
+                #         f"[{itask}] may be active with pre-reload settings"
+                #     )
 
         # Reassign live tasks to the internal queue
         del self.task_queue_mgr

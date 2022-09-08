@@ -266,6 +266,12 @@ class TaskProxy:
             f" flows:{','.join(str(i) for i in self.flow_nums) or 'none'}"
         )
 
+    def reload(self, tdef):
+        self.tdef = tdef
+        self.state.reload(tdef, self.point)
+        # Determine graph children of this task (for spawning).
+        self.graph_children = generate_graph_children(tdef, self.point)
+
     def copy_to_reload_successor(self, reload_successor):
         """Copy attributes to successor on reload of this task proxy."""
         self.reload_successor = reload_successor

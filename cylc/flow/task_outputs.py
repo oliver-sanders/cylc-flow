@@ -15,6 +15,9 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """Task output message manager and constants."""
 
+from contextlib import suppress
+
+from cylc.flow import LOG
 
 # Standard task output strings, used for triggering.
 TASK_OUTPUT_EXPIRED = "expired"
@@ -70,6 +73,35 @@ class TaskOutputs:
         self._by_trigger[trigger] = self._by_message[message]
         if required:
             self._required.add(trigger)
+
+    def reload(self, tdef):
+        # update triggers/messages
+        old = {
+            (trigger, message)
+            for trigger, (_, message, _) in self._by_message.items()
+        }
+        new = {
+            (trigger, message)
+            for trigger, (message, _) in tdef.outputs.items()
+        }
+        for (trigger, message) in old - new:
+            # old triggers removed by reload
+            LOG.warning(f'Removing trigger {trigger}:{message}')
+            with suppress(KeyError):
+                self._by_message.pop(message)
+            with suppress(KeyError):
+                self._by_trigger.pop(trigger)
+        for (trigger, message) in new - old:
+            # new triggers added by reload
+            LOG.warning(f'Adding trigger {trigger}:{message}')
+            self._add(message, trigger)
+
+        # update requird outputs
+        self._required = {
+            trigger
+            for trigger, (_, required) in tdef.outputs.items()
+            if required
+        }
 
     def set_completed_by_msg(self, message):
         """For flow trigger --wait: set completed outputs from the DB."""
