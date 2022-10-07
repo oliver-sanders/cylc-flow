@@ -2057,6 +2057,7 @@ class WorkflowConfig:
             except (AttributeError, TypeError, ValueError, CylcError) as exc:
                 if cylc.flow.flags.verbosity > 1:
                     traceback.print_exc()
+                raise
                 msg = 'Cannot process recurrence %s' % section
                 msg += ' (initial cycle point=%s)' % icp
                 msg += ' (final cycle point=%s)' % fcp

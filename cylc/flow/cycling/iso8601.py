@@ -279,7 +279,6 @@ class ISO8601Exclusions(ExclusionBase):
 
 
 class ISO8601Sequence(SequenceBase):
-
     """A sequence of ISO8601 date time points separated by an interval.
     Note that an ISO8601Sequence object (may) contain
     ISO8601ExclusionSequences"""
@@ -605,6 +604,139 @@ class ISO8601Sequence(SequenceBase):
 
     def __hash__(self) -> int:
         return hash(self.value)
+
+
+from queue import deque
+from dateutil.rrule import (
+    rrulestr,
+    YEARLY,
+    MONTHLY,
+    WEEKLY,
+    DAILY,
+    HOURLY,
+    MINUTELY,
+    SECONDLY,
+)
+from dateutil.parser import (
+    parse,
+)
+
+
+class RRuleSequence(SequenceBase):
+
+    TYPE = 'RRule Sequence'
+    TYPE_SORT_KEY = CYCLER_TYPE_SORT_KEY_ISO8601
+
+    def __init__(self, sequence_string, context_start, context_stop=None):
+        # TODO: context_stop
+        sequence_string = sequence_string.replace('-', '=')
+        sequence_string = sequence_string.replace('_', ',')
+        self._rrule = rrulestr(sequence_string, dtstart=parse(context_start))
+        self._iter = self._rrule.__iter__()
+        self._prev = deque([], 5)
+
+    @staticmethod
+    def isotodateu(iso_point):
+        return parse(str(iso_point))
+
+    @staticmethod
+    def dateutoiso(dateu_point):
+        return WorkflowSpecifics.point_parser.parse(
+            str(dateu_point).replace(' ', 'T')
+        )
+
+    def get_async_expr(cls, start_point=0):
+        raise NotImplementedError()
+
+    def get_interval(self):
+        return {
+            YEARLY: ISO8601Interval(f'P{self._rrule._interval}Y'),
+            MONTHLY: ISO8601Interval(f'P{self._rrule._interval}M'),
+            WEEKLY: ISO8601Interval(f'P{self._rrule._interval}W'),
+            DAILY: ISO8601Interval(f'P{self._rrule._interval}D'),
+            HOURLY: ISO8601Interval(f'PT{self._rrule._interval}H'),
+            MINUTELY: ISO8601Interval(f'PT{self._rrule._interval}M'),
+            SECONDLY: ISO8601Interval(f'PT{self._rrule._interval}S')
+        }
+
+    def get_offset(self):
+        self.offset = ISO8601Interval.get_null()
+
+    def set_offset(self, i_offset):
+        raise NotImplementedError()
+
+    def is_on_sequence(self, point):
+        return self.isotodateu(point) in self._rrule
+
+    is_valid = is_on_sequence
+
+    def _wind(self, point):
+        if len(self._prev) and point < self._prev[-1]:
+            # re-wind
+            self._iter = self._rrule.__iter__()
+            self._prev.clear()
+        for _point in self._iter:
+            self._prev.append(_point)
+            if _point >= point:
+                return
+
+    def _next(self):
+        self._prev.append(
+            self._iter.__next__()
+        )
+
+    def get_prev_point(self, point):
+        point = self.isotodateu(point)
+        if point in self._prev:
+            # result is in cache
+            with contextlib.suppress(IndexError):
+                return self.dateutoiso(
+                    self._prev[self._prev.index(point) - 1]
+                )
+        self._wind(point)
+        if point in self._prev:
+            # result is now in cache
+            with contextlib.suppress(IndexError):
+                return self.dateutoiso(
+                    self._prev[self._prev.index(point) - 1]
+                )
+        raise IndexError()
+
+    get_nearest_prev_point = get_prev_point
+
+    def get_next_point(self, point):
+        point = self.isotodateu(point)
+        if point in self._prev:
+            # result is in cache
+            with contextlib.suppress(IndexError):
+                return self.dateutoiso(
+                    self._prev[self._prev.index(point) + 1]
+                )
+        self._wind(point)
+        self._next()
+        if point in self._prev:
+            # result is in cache
+            with contextlib.suppress(IndexError):
+                return self.dateutoiso(
+                    self._prev[self._prev.index(point) + 1]
+                )
+        raise IndexError()
+
+    get_next_point_on_sequence = get_next_point
+
+    def get_first_point(self, point=None):
+        return self.dateutoiso(
+            self._rrule.__iter__().__next__()
+        )
+
+    def get_stop_point(self):
+        return None  # TODO
+
+    def __eq__(self, other):
+        return str(self._rrule) == str(other._rrule)
+
+    def __hash__(self):
+        return hash(str(self._rrule))
 
 
 def _get_old_anchor_step_recurrence(anchor, step, start_point):

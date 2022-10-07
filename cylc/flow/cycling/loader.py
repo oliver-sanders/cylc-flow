@@ -119,7 +119,11 @@ def get_sequence(*args, **kwargs):
     if args[0] is None:
         return None
     cycling_type = kwargs.pop("cycling_type", DefaultCycler.TYPE)
-    return get_sequence_cls(cycling_type=cycling_type)(*args, **kwargs)
+    if args[0].startswith('RRULE'):
+        cls = iso8601.RRuleSequence
+    else:
+        cls = get_sequence_cls(cycling_type=cycling_type)
+    return cls(*args, **kwargs)
 
 
 def get_sequence_cls(cycling_type=None):
