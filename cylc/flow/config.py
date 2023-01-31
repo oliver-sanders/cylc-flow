@@ -46,6 +46,7 @@ from metomi.isodatetime.timezone import get_local_time_zone_format
 from metomi.isodatetime.dumpers import TimePointDumper
 
 from cylc.flow import LOG
+from cylc.flow.bash_syntax_check import check_taskdef
 from cylc.flow.c3mro import C3
 from cylc.flow.cfgspec.glbl_cfg import glbl_cfg
 from cylc.flow.cfgspec.workflow import RawWorkflowConfig
@@ -532,6 +533,7 @@ class WorkflowConfig:
         self._check_task_event_handlers()
         self._check_special_tasks()  # adds to self.implicit_tasks
         self._check_explicit_cycling()
+        self._check_bash_syntax()
 
         self._warn_if_queues_have_implicit_tasks(
             self.cfg, self.taskdefs, self.MAX_WARNING_LINES)
@@ -1595,6 +1597,10 @@ class WorkflowConfig:
         """
         for taskdef in self.taskdefs.values():
             taskdef.check_for_explicit_cycling()
+
+    def _check_bash_syntax(self):
+        for taskdef in self.taskdefs.values():
+            check_taskdef(taskdef)
 
     def get_task_name_list(self):
         """Return a sorted list of all tasks used in the dependency graph.
