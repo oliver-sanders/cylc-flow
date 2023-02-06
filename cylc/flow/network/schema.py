@@ -1522,23 +1522,14 @@ class Broadcast(Mutation):
             '''),
             # e.g. `{environment: {variable_name: "value",. . .}. . .}`.
         )
-        cutoff = CyclePoint(
+        cutoff = String(
+            # NOTE: we don't use the CyclePoint type here because we don't
+            # want the UI to auto-fill this value
             description=(
                 'Clear broadcasts earlier than cutoff cycle point.'
                 ' (for use with "Expire" mode).'
             )
         )
-
-        # TODO: work out how to implement this feature, it needs to be
-        #       handled client-side which makes it slightly awkward in
-        #       api-on-the-fly land
-
-        # files = graphene.List(
-        #    String,
-        #    description=sstrip('''
-        #        File with config to broadcast. Can be used multiple times
-        #    ''')
-        # )
 
     result = GenericScalar()
 
