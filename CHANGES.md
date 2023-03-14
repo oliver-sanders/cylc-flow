@@ -27,6 +27,9 @@ short option for `--no-detach` to `-N`; add `-r` as a short option for
 [#5458](https://github.com/cylc/cylc-flow/pull/5458) - Fix a small bug
 causing option parsing to fail with Cylc Reinstall.
 
+[#5414](https://github.com/cylc/cylc-flow/pull/5414) -
+Enable cat-log to view workflow logs with -f option.
+
 -------------------------------------------------------------------------------
 ## __cylc-8.1.3 (<span actions:bind='release-date'>Upcoming</span>)__
 
