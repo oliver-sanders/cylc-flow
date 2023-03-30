@@ -17,6 +17,10 @@ ones in. -->
 [#5291](https://github.com/cylc/cylc-flow/pull/5291) - re-implement old-style
 clock triggers as wall_clock xtriggers.
 
+[#5453](https://github.com/cylc/cylc-flow/pull/5453) - `cylc cat-log` can now
+list and view workflow log files including install logs and workflow
+configuration files.
+
 [#5439](https://github.com/cylc/cylc-flow/pull/5439) - Small CLI short option chages:
 Add the `-n` short option for `--workflow-name` to `cylc vip`; rename the `-n`
 short option for `--no-detach` to `-N`; add `-r` as a short option for
@@ -29,6 +33,9 @@ causing option parsing to fail with Cylc Reinstall.
 
 [#5414](https://github.com/cylc/cylc-flow/pull/5414) -
 Enable cat-log to view workflow logs with -f option.
+
+[#5328](https://github.com/cylc/cylc-flow/pull/5328) -
+Efficiency improvements to reduce task management overheads on the Scheduler.
 
 -------------------------------------------------------------------------------
 ## __cylc-8.1.3 (<span actions:bind='release-date'>Upcoming</span>)__
@@ -51,13 +58,6 @@ Cylc to crash when preparing the job script.
 [#5359](https://github.com/cylc/cylc-flow/pull/5359) - Fix bug where viewing
 a workflow's log in the GUI or using `cylc cat-log` would prevent `cylc clean`
 from working.
-
--------------------------------------------------------------------------------
-## __cylc-8.2.0 (<span actions:bind='release-date'>Coming Soon</span>)__
-
-### Fixes
-[#5328](https://github.com/cylc/cylc-flow/pull/5328) -
-Efficiency improvements to reduce task management overheads on the Scheduler.
 
 -------------------------------------------------------------------------------
 ## __cylc-8.1.2 (<span actions:bind='release-date'>Released 2023-02-20</span>)__
