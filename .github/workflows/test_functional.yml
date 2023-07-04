@@ -107,7 +107,10 @@ jobs:
         if: startsWith(matrix.os, 'macos')
         run: |
           # install system deps
-          brew update-reset
+          # brew update-reset
+          git config --global pack.windowMemory "100m"
+          git config --global pack.SizeLimit "100m"
+          git config --global pack.threads "1"
           brew update
           brew install bash coreutils gnu-sed
 
