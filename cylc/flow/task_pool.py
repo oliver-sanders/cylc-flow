@@ -1268,6 +1268,8 @@ class TaskPool:
             forced: If True this is a manual spawn command.
 
         """
+        if not itask.flow_nums:
+            return
         self.workflow_db_mgr.put_update_task_outputs(itask)
         if (
             output == TASK_OUTPUT_FAILED
@@ -1409,6 +1411,8 @@ class TaskPool:
            associated prerequisites of spawned children to satisifed.
 
         """
+        if not itask.flow_nums:
+            return
         if completed_only:
             outputs = itask.state.outputs.get_completed()
         else:
