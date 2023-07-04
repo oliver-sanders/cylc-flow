@@ -107,6 +107,7 @@ jobs:
         if: startsWith(matrix.os, 'macos')
         run: |
           # install system deps
+          brew update-reset
           brew update
           brew install bash coreutils gnu-sed
 
