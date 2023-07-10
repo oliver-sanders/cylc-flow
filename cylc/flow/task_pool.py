@@ -1268,8 +1268,6 @@ class TaskPool:
             forced: If True this is a manual spawn command.
 
         """
-        if not itask.flow_nums:
-            return
         self.workflow_db_mgr.put_update_task_outputs(itask)
         if (
             output == TASK_OUTPUT_FAILED
@@ -1277,11 +1275,12 @@ class TaskPool:
             and itask.identity not in self.expected_failed_tasks
         ):
             self.abort_task_failed = True
-        try:
-            children = itask.graph_children[output]
-        except KeyError:
-            # No children depend on this output
-            children = []
+
+        children = []  # No children depend on this output
+        if itask.flow_nums or forced:
+            # only spawn children if the task is associated with a flow
+            with suppress(KeyError):
+                children = itask.graph_children[output]
 
         suicide = []
         for c_name, c_point, is_abs in children:

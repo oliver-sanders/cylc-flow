@@ -195,8 +195,12 @@ DEFAULT_INCLUDES = [
 
 
 def construct_rsync_over_ssh_cmd(
-    src_path: str, dst_path: str, platform: Dict[str, Any],
-    rsync_includes=None, bad_hosts=None
+    src_path: str,
+    dst_path: str,
+    platform: Dict[str, Any],
+    rsync_includes=None,
+    bad_hosts=None,
+    dst_host: str = '',
 ) -> Tuple[List[str], str]:
     """Constructs the rsync command used for remote file installation.
 
@@ -219,7 +223,8 @@ def construct_rsync_over_ssh_cmd(
         do not break ``rsync_255_fail``.
     """
     dst_path = dst_path.replace('$HOME/', '')
-    dst_host = get_host_from_platform(platform, bad_hosts=bad_hosts)
+    if not dst_host:
+        dst_host = get_host_from_platform(platform, bad_hosts=bad_hosts)
     ssh_cmd = platform['ssh command']
     command = platform['rsync command']
     rsync_cmd = shlex.split(command)

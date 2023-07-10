@@ -309,6 +309,13 @@ class SubProcPool:
                 ]
             )
 
+    def put_command_async(self, ctx):
+        import asyncio
+        future = asyncio.Future()
+        ctx.callback = lambda _ctx: future.set_result(_ctx)
+        self.put_command(ctx)
+        return future
+
     @classmethod
     def run_command(cls, ctx):
         """Execute command in ctx and capture its output and exit status.

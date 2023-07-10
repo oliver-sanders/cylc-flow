@@ -316,6 +316,73 @@ def get_platform_from_group(
         return HOST_SELECTION_METHODS[method](platform_names)
 
 
+def platform_name_from_job_info2(
+    platforms: Union[dict, 'OrderedDictWithDefaults'],
+    host: str,
+    rtconfig: Dict[str, Any],
+) -> str:
+    task_host = host
+    job = rtconfig['job']
+    remote = rtconfig['remote']
+
+    # These settings are removed from the incoming dictionaries for special
+    # handling later - we want more than a simple match:
+    #   - In the case of "host" we also want a regex match to the platform name
+    #   - In the case of "batch system" we want to match the name of the
+    #     system/job runner to a platform when host is localhost.
+
+    # NOTE: Do NOT use .get() on OrderedDictWithDefaults -
+    # https://github.com/cylc/cylc-flow/pull/4975
+    if 'host' in remote and remote['host']:
+        task_host = remote['host']
+    else:
+        task_host = 'localhost'
+    if 'batch system' in job and job['batch system']:
+        task_job_runner = job['batch system']
+    else:
+        # Necessary? Perhaps not if batch system default is 'background'
+        task_job_runner = 'background'
+
+    # Riffle through the platforms looking for a match to our task settings.
+    # reverse dict order so that user config platforms added last are examined
+    # before site config platforms.
+    for platform_name, platform_spec in reversed(list(platforms.items())):
+        # Handle all the items requiring an exact match.
+        # All items other than batch system and host must be an exact match
+        if not generic_items_match(platform_spec, job, remote):
+            continue
+        # We have some special logic to identify whether task host and task
+        # batch system match the platform in question.
+        if (
+            not is_remote_host(task_host) and
+            task_job_runner == 'background'
+        ):
+            return 'localhost'
+
+        elif (
+            'hosts' in platform_spec and
+            task_host in platform_spec['hosts'] and
+            task_job_runner == platform_spec['job runner']
+        ):
+            # If we have localhost with a non-background batch system we
+            # use the batch system to give a sensible guess at the platform
+            return platform_name
+
+        elif (
+            re.fullmatch(platform_name, task_host) and (
+                (
+                    task_job_runner == 'background' and
+                    'job runner' not in platform_spec
+                ) or
+                task_job_runner == platform_spec['job runner']
+            )
+        ):
+            return task_host
+
+    raise PlatformLookupError('No platform found matching your task')
+
+
+
 def platform_name_from_job_info(
     platforms: Union[dict, 'OrderedDictWithDefaults'],
     job: Dict[str, Any],

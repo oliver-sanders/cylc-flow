@@ -1023,10 +1023,8 @@ async def test_no_flow_tasks_dont_spawn(
 
         for flow_nums, pool in (
             # a no-flow task should not spawn any downstreams
-            (set(), ['1/a']),
+            (set(), []),
             # a task with flow-nums should spawn downstreams
-            # (it will also be removed from the pool as completed as a
-            # side-effect)
             ({1}, ['1/b']),
         ):
             # set the flow-nums on 1/a
