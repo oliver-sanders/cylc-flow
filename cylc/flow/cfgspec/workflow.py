@@ -961,6 +961,105 @@ with Conf(
             can be explicitly configured to provide or override default
             settings for all tasks in the workflow.
         '''):
+            Conf('completion', VDR.V_STRING, desc='''
+                Define the condition for task completion.
+
+                The completion condition is used to detect errors in workflows.
+                When a task finishes (e.g. succeeds or fails), the
+                :term:`outputs <task output>` it yielded when it ran are
+                checked against the completion condition. If the task
+                is not considered complete, then the workflow will emit the
+                :term:`stalled <stall>` event. This helps to alert you that
+                somethinf has gone wrong which requires investigation.
+
+                By default, the "completion condition" ensures that the
+                task succeeds. I.E. if the task fails, then the workflow will
+                stall.
+
+                If :ref:`User Guide Optional Outputs` are defined in the graph,
+                then one or more of the optional outputs must also be generated
+                in order for the task to be completed.
+
+                E.G. In this example, the task ``foo`` must yield one of the
+                outputs ``a`` or ``b`` in order to be considered complete:
+
+                .. code-block:: cylc-graph
+
+                   foo:a? => a
+                   foo:b? => b
+
+                The ``completion`` configuration allows you to override this
+                default completion behaviour to suit your needs.
+
+                E.G. In this example, the task ``foo`` must yield both the
+                ``succeeded`` output and the :term:`custom output`
+                ``myoutput`` to be considered complete:
+                
+                .. code-block:: cylc
+
+                   [runtime]
+                       [[foo]]
+                           completion = succeeded and myoutput
+                           [[[outputs]]]
+                               myoutput = 'my custom task output'
+
+                The completion condition uses Python syntax and may reference
+                any task outputs.
+                It can use the ``and`` & ``or`` operators, but cannot use
+                ``not``.
+
+                .. note::
+                
+                   For the completion expression, hyphens in task outputs
+                   are converted into underscores e.g:
+
+                   .. code-block:: cylc
+
+                      [runtime]
+                          [[foo]]
+                              completion = succeeded and my_output  # underscore
+                              [[[outputs]]]
+                                  my-output = 'my custom task output'  # hyphen
+
+                .. hint::
+
+                   If task outputs are optional in the graph they must also
+                   be optional in the completion condition and vice versa.
+
+                   .. code-block:: cylc
+
+                      [scheduling]
+                          [[graph]]
+                              R1 = """
+                                  # ERROR: this should be "a? => b"
+                                  a => b
+                              """
+                      [runtime]
+                          [[a]]
+                              # this completion condition infers that the
+                              # succeeded output is optional
+                              completion = succeeded or failed
+
+                .. rubric:: Examples
+
+                ``succeeded``
+                   The task must succeed.
+                ``succeeded or expired``
+                   The task can either succeed or
+                   :ref:`expire <ClockExpireTasks>`.
+                ``succeeded or (failed and some_error)``
+                   The task can fail, but only if it also yields the custom
+                   output ``my_error``.
+                ``succeeded and (x or y or z)``
+                   The task must succeed and yield at least one of the
+                   custom outputs, x, y or z.
+                ``(a and b) or (c and d)``
+                   One pair of these outputs must be yielded for the task
+                   to be complete.
+
+                .. versionadded:: 8.3.0
+
+            ''')
             Conf('platform', VDR.V_STRING, desc='''
                 The name of a compute resource defined in
                 :cylc:conf:`global.cylc[platforms]` or

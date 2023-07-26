@@ -88,8 +88,11 @@ from cylc.flow.task_events_mgr import (
 )
 from cylc.flow.task_id import TaskID
 from cylc.flow.task_outputs import (
+    CompletionEvaluator,
+    TASK_OUTPUT_EXPIRED,
     TASK_OUTPUT_SUCCEEDED,
-    TaskOutputs
+    TaskOutputs,
+    get_optional_outputs,
 )
 from cylc.flow.task_trigger import TaskTrigger, Dependency
 from cylc.flow.taskdef import TaskDef
@@ -534,6 +537,7 @@ class WorkflowConfig:
 
         self._check_implicit_tasks()
         self._check_sequence_bounds()
+        self.check_completion_expressions()
         self.validate_namespace_names()
 
         # Check that external trigger messages are only used once (they have to
@@ -1126,6 +1130,76 @@ class WorkflowConfig:
                     bad for bad in sorted(bads)
                 )
             )
+
+    def check_completion_expressions(self):
+        """Check any configured completion expressions.
+
+        * Ensure completion expressions are not used in Cylc 7 compat mode.
+        * Ensure completion expressions do not reference missing task outputs.
+        * Ensure completion expressions are valid and do not use forbidden
+          syntax.
+        * Ensure optional/required outputs are consistent between the completion
+          expression and the graph.
+
+        Raises:
+            WorkflowConfigError: If any of the above checks fail.
+
+        """
+        for name, rtcfg in self.cfg['runtime'].items():
+            expr = rtcfg.get('completion')
+            if not expr:
+                continue
+            if cylc.flow.flags.cylc7_back_compat:
+                raise WorkflowConfigError(
+                    '[runtime][<namespace>]completion cannot be used'
+                    ' in Cylc 7 compatabilityt mode.'
+                )
+
+            try:
+                CompletionEvaluator(expr, **self.taskdefs[name].outputs)
+            except NameError as exc:
+                # no such output
+                raise WorkflowConfigError(
+                    f'Error in [runtime][{name}]completion:'
+                    f'\nInput {str(exc)[5:]}'
+                )
+            except Exception as exc:  # includes InvalidCompletionExpression
+                # non-whitelisted syntax present
+                # or any other error e.g. SyntaxError
+                raise WorkflowConfigError(
+                    f'Error in [runtime][{name}]completion:'
+                    f'\n{str(exc)}'
+                )
+
+            graph_optionals = {
+                output: None if is_optional is None else not is_optional
+                for output, (_, is_optional)
+                in self.taskdefs[name].outputs.items()
+            }
+            expression_optionals = get_optional_outputs(expr, graph_optionals)
+            for output in graph_optionals | expression_optionals:
+                graph_opt = graph_optionals.get(output)
+                expr_opt = expression_optionals.get(output)
+                if (
+                    # output is used in graph
+                    graph_opt is not None
+                    # output is used in expression
+                    and expr_opt is not None  # TODO: this can't ever be None?
+                    # output is required in one but optional in the other
+                    and graph_opt != expr_opt
+                ):
+                    if graph_opt is True:
+                        raise WorkflowConfigError(
+                            f'{name}:{output} is optional in the graph'
+                            ' (? symbol), but required in the completion'
+                            ' expression.'
+                        )
+                    if expr_opt is True:
+                        raise WorkflowConfigError(
+                            f'{name}:{output} is optional in the completion'
+                            ' expression, but required in the graph'
+                            ' (? symbol).'
+                        )
 
     def filter_env(self):
         """Filter environment variables after sparse inheritance"""
@@ -2136,7 +2210,7 @@ class WorkflowConfig:
             raise WorkflowConfigError('task and @xtrigger names clash')
 
         for tdef in self.taskdefs.values():
-            tdef.tweak_outputs()
+            tdef.set_implicit_required_outputs()
 
     def _proc_triggers(self, parser, seq, task_triggers):
         """Define graph edges, taskdefs, and triggers, from graph sections."""
@@ -2194,13 +2268,36 @@ class WorkflowConfig:
             task_output_opt: {(task, output): (is-optional, default, is_set)}
         """
         for name, taskdef in self.taskdefs.items():
+            outputs = taskdef.outputs
+            # clock_expired = taskdef.name in self.expiration_offsets
             for output in taskdef.outputs:
+                # optional_clock = None
+                # if output == TASK_OUTPUT_EXPIRED and clock_expired:
+                #     optional_clock = True
                 try:
-                    optional, _, _ = task_output_opt[(name, output)]
+                    optional_graph, _, _ = task_output_opt[(name, output)]
                 except KeyError:
                     # Output not used in graph.
                     continue
-                taskdef.set_required_output(output, not optional)
+                # if (
+                #     optional_clock
+                #     and optional_clock != optional_graph
+                # ):
+                #     raise InputError('TODO')
+                # taskdef.set_required_output(output, not optional)
+                outputs[output] = (outputs[output][0], not optional_graph)
+
+        for name in self.expiration_offsets:
+            try:
+                taskdef = self.taskdefs[name]
+            except KeyError:
+                raise InputError('TODO')
+            if taskdef.outputs[TASK_OUTPUT_EXPIRED][1]:
+                raise InputError('TODO')
+            taskdef.outputs[TASK_OUTPUT_EXPIRED] = (
+                taskdef.outputs[TASK_OUTPUT_EXPIRED][0],
+                False,
+            )
 
     def find_taskdefs(self, name: str) -> Set[TaskDef]:
         """Find TaskDef objects in family "name" or matching "name".
