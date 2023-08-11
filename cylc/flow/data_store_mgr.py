@@ -566,6 +566,7 @@ class DataStoreMgr:
         families = self.added[FAMILIES]
         workflow = self.added[WORKFLOW]
         workflow.id = self.workflow_id
+        workflow.n_edge_distance = self.n_edge_distance
         workflow.last_updated = update_time
         workflow.stamp = f'{workflow.id}@{workflow.last_updated}'
 
@@ -2150,6 +2151,10 @@ class DataStoreMgr:
         if w_data.status != status or w_data.status_msg != status_msg:
             w_delta.status = status
             w_delta.status_msg = status_msg
+            delta_set = True
+
+        if w_data.n_edge_distance != self.n_edge_distance:
+            w_delta.n_edge_distance = self.n_edge_distance
             delta_set = True
 
         if self.schd.pool.main_pool:
