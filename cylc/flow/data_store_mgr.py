@@ -2019,6 +2019,7 @@ class DataStoreMgr:
             is_held_total = 0
             is_queued_total = 0
             is_runahead_total = 0
+            graph_depth = self.n_edge_distance
             for child_id in fam_node.child_families:
                 child_node = fp_updated.get(child_id, fp_data.get(child_id))
                 if child_node is not None:
@@ -2026,6 +2027,8 @@ class DataStoreMgr:
                     is_queued_total += child_node.is_queued_total
                     is_runahead_total += child_node.is_runahead_total
                     state_counter += Counter(dict(child_node.state_totals))
+                    if child_node.graph_depth < graph_depth:
+                        graph_depth = child_node.graph_depth
             # Gather all child task states
             task_states = []
             for tp_id in fam_node.child_tasks:
@@ -2060,6 +2063,12 @@ class DataStoreMgr:
                 if tp_runahead.is_runahead:
                     is_runahead_total += 1
 
+                tp_depth = tp_delta
+                if tp_depth is None or not tp_depth.HasField('graph_depth'):
+                    tp_depth = tp_node
+                if tp_depth.graph_depth < graph_depth:
+                    graph_depth = tp_depth.graph_depth
+
             state_counter += Counter(task_states)
             # created delta data element
             fp_delta = PbFamilyProxy(
@@ -2071,7 +2080,8 @@ class DataStoreMgr:
                 is_queued=(is_queued_total > 0),
                 is_queued_total=is_queued_total,
                 is_runahead=(is_runahead_total > 0),
-                is_runahead_total=is_runahead_total
+                is_runahead_total=is_runahead_total,
+                graph_depth=graph_depth
             )
             fp_delta.states[:] = state_counter.keys()
             # Use all states to clean up pruned counts
