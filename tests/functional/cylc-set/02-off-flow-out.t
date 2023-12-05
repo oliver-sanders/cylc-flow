@@ -29,16 +29,16 @@ reftest_run
 #  - all the required outputs of a_cold
 #  - the requested and implied outputs of b_cold and c_cold
 
-grep_workflow_log_ok grep-a1 'implied output "submitted" of 1/a_cold'
-grep_workflow_log_ok grep-a2 'implied output "started" of 1/a_cold'
-grep_workflow_log_ok grep-a3 'completing output "succeeded" of 1/a_cold'
+grep_workflow_log_ok grep-a1 '1/a_cold.* setting missed output: submitted'
+grep_workflow_log_ok grep-a2 '1/a_cold.* setting missed output: started'
+grep_workflow_log_ok grep-a3 'output 1/a_cold:succeeded completed'
 
-grep_workflow_log_ok grep-b1 'implied output "submitted" of 1/b_cold'
-grep_workflow_log_ok grep-b2 'implied output "started" of 1/b_cold'
-grep_workflow_log_ok grep-b3 'completing output "succeeded" of 1/b_cold'
+grep_workflow_log_ok grep-a1 '1/b_cold.* setting missed output: submitted'
+grep_workflow_log_ok grep-a2 '1/b_cold.* setting missed output: started'
+grep_workflow_log_ok grep-b3 'output 1/b_cold:succeeded completed'
 
-grep_workflow_log_ok grep-c1 'implied output "submitted" of 1/c_cold'
-grep_workflow_log_ok grep-c2 'implied output "started" of 1/c_cold'
-grep_workflow_log_ok grep-c3 'completing output "succeeded" of 1/c_cold'
+grep_workflow_log_ok grep-a1 '1/c_cold.* setting missed output: submitted'
+grep_workflow_log_ok grep-a2 '1/c_cold.* setting missed output: started'
+grep_workflow_log_ok grep-c3 'output 1/c_cold:succeeded completed'
 
 purge
