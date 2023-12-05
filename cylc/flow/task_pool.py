@@ -767,16 +767,15 @@ class TaskPool:
 
     def remove(self, itask, reason=""):
         """Remove a task from the pool (e.g. after a reload)."""
-        self.tasks_removed = True
-        msg = "task proxy removed"
+        msg = "removed from active pool"
         if reason:
             msg += f" ({reason})"
-
         try:
             del self.active_tasks[itask.point][itask.identity]
         except KeyError:
             pass
         else:
+            self.tasks_removed = True
             self.active_tasks_changed = True
             if not self.active_tasks[itask.point]:
                 del self.active_tasks[itask.point]
@@ -790,7 +789,7 @@ class TaskPool:
             # Event-driven final update of task_states table.
             # TODO: same for datastore (still updated by scheduler loop)
             self.workflow_db_mgr.put_update_task_state(itask)
-            LOG.debug(f"[{itask}] {msg}")
+            LOG.info(f"[{itask}] {msg}")
             del itask
 
     def get_tasks(self) -> List[TaskProxy]:
@@ -1375,20 +1374,23 @@ class TaskPool:
 
             return
 
-        incomplete = itask.state.outputs.get_incomplete()
-        if incomplete:
-            # Retain as an incomplete task.
-            LOG.warning(
-                f"[{itask}] did not complete required outputs:"
-                f" {incomplete}"
-            )
-            return
-
-        # Complete, can remove it from the pool.
-        self.remove(itask, 'completed')
+        if itask.state(TASK_STATUS_EXPIRED):
+            reason = "expired"
+        else:
+            reason = "completed"
+            incomplete = itask.state.outputs.get_incomplete()
+            if incomplete:
+                # Retain as an incomplete task.
+                LOG.warning(
+                    f"[{itask}] did not complete required outputs:"
+                    f" {incomplete}"
+                )
+                return
 
         if itask.identity == self.stop_task_id:
             self.stop_task_finished = True
+
+        self.remove(itask, reason)
 
         if self.compute_runahead():
             self.release_runahead_tasks()
@@ -1864,15 +1866,11 @@ class TaskPool:
 
     def clock_expire_tasks(self):
         """Expire any tasks past their clock-expiry time."""
-
         for itask in self.get_tasks():
             if not itask.clock_expire():
                 continue
             self.task_events_mgr.process_message(
                 itask, logging.WARNING, TASK_OUTPUT_EXPIRED)
-
-            if itask.state(TASK_STATUS_EXPIRED):
-                self.remove(itask, 'completed')
 
     def task_succeeded(self, id_):
         """Return True if task with id_ is in the succeeded state."""

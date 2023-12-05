@@ -1196,8 +1196,12 @@ class TaskEventsManager():
         if not itask.state_reset(TASK_STATUS_EXPIRED):
             return
         self.data_store_mgr.delta_task_state(itask)
-        msg = 'Task expired: will not submit job.'
-        self.setup_event_handlers(itask, self.EVENT_EXPIRED, msg)
+        self.data_store_mgr.delta_task_queued(itask)
+        self.setup_event_handlers(
+            itask,
+            self.EVENT_EXPIRED,
+            "Task expired: will not submit job."
+        )
 
     def _process_message_succeeded(self, itask, event_time):
         """Helper for process_message, handle a succeeded message."""

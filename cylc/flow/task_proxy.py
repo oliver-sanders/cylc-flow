@@ -509,6 +509,8 @@ class TaskProxy:
     ) -> bool:
         """Set new state and log the change. Return whether it changed."""
         before = str(self)
+        if status == TASK_STATUS_EXPIRED:
+            is_queued = False
         if self.state.reset(status, is_held, is_queued, is_runahead):
             if not silent and not self.transient:
                 LOG.info(f"[{before}] => {self.state}")
