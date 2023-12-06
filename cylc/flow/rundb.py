@@ -312,6 +312,7 @@ class CylcWorkflowDAO:
             ["status"],
             ["flow_wait", {"datatype": "INTEGER"}],
             ["is_manual_submit", {"datatype": "INTEGER"}],
+            ["is_complete", {"datatype": "INTEGER"}]
         ],
         TABLE_TASK_TIMEOUT_TIMERS: [
             ["cycle", {"is_primary_key": True}],
@@ -777,13 +778,16 @@ class CylcWorkflowDAO:
         # Not an injection, simply putting the table name in the SQL query
         # expression as a string constant local to this module.
         stmt = (  # nosec
-            r"SELECT flow_nums,submit_num,flow_wait FROM %(name)s"
+            r"SELECT flow_nums,submit_num,flow_wait,is_complete FROM %(name)s"
             r" WHERE name==? AND cycle==?"
         ) % {"name": self.TABLE_TASK_STATES}
         ret = {}
-        for flow_nums_str, submit_num, flow_wait in self.connect().execute(
-                stmt, (name, point,)):
-            ret[submit_num] = (flow_wait == 1, deserialise(flow_nums_str))
+        for flow_nums_str, submit_num, flow_wait, is_complete in (
+            self.connect().execute(stmt, (name, point,))
+        ):
+            ret[submit_num] = (
+                flow_wait == 1, deserialise(flow_nums_str), is_complete
+            )
         return ret
 
     def select_latest_flow_nums(self):

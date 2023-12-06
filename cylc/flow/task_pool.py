@@ -1516,7 +1516,7 @@ class TaskPool:
             submit_num = 0
 
         flow_wait_done = False
-        for snum, (f_wait, old_fnums) in snums.items():
+        for snum, (f_wait, old_fnums, is_complete) in snums.items():
             # Flow_nums of previous instances.
             if (
                 not force and
@@ -1525,13 +1525,13 @@ class TaskPool:
                 if f_wait:
                     flow_wait_done = f_wait
                     break
-                if snum == 0:
+                if not is_complete:
                     break
                 # Already spawned, or has manually set outputs.
                 LOG.warning(
                     f"{point}/{name}/{snum:02d}"
                     f"{stringify_flow_nums(flow_nums)}"
-                    " can't be spawned. It already has outputs"
+                    " already completed in this flow"
                 )
                 return None
 

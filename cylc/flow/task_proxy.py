@@ -525,3 +525,10 @@ class TaskProxy:
         ):
             return False
         return True
+
+    def is_complete(self) -> bool:
+        """Return True if complete or expired, else False."""
+        return (
+            self.state(TASK_STATUS_EXPIRED)
+            or not self.state.outputs.is_incomplete()
+        )
