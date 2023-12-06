@@ -86,6 +86,34 @@ def validate_flow_opts(options):
         raise InputError(ERR_OPT_FLOW_WAIT)
 
 
+def stringify_flow_nums(flow_nums: Set[int]) -> str:
+    """Return a string representation of a set of flow numbers
+
+    If the set contains only the original flow 1, return an empty string
+    so that users don't have consider flows until they trigger new ones.
+
+    Otherwise return e.g. "(1,2,3)".
+
+    Examples:
+        >>> stringify_flow_nums({})
+        '(none)'
+
+        >>> stringify_flow_nums({1})
+        ''
+
+        >>> stringify_flow_nums({1,2,3})
+        '(1,2,3)'
+
+    """
+    if flow_nums == {1}:
+        return ""
+    return (
+        "("
+        f"{','.join(str(i) for i in flow_nums) or 'none'}"
+        ")"
+    )
+
+
 class FlowMgr:
     """Logic to manage flow counter and flow metadata."""
 

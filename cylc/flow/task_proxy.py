@@ -27,6 +27,7 @@ from typing import (
 from metomi.isodatetime.timezone import get_local_time_zone
 
 from cylc.flow import LOG
+from cylc.flow.flow_mgr import stringify_flow_nums
 from cylc.flow.platforms import get_platform
 from cylc.flow.task_action_timer import TimerFlags
 from cylc.flow.task_state import (
@@ -277,32 +278,17 @@ class TaskProxy:
                 )
             )
 
-    def flows_str(self) -> str:
-        """Return string representation of my flow numbers."""
-        return (
-            "{" + f"{','.join(str(i) for i in self.flow_nums) or 'none'}" + "}"
-        )
-
     def __repr__(self) -> str:
         return f"<{self.__class__.__name__} '{self.tokens}'>"
 
     def __str__(self) -> str:
         """Stringify with tokens, state, submit_num, and flow_nums.
 
-        Format: "<point>/<name>/<job>{<flows>} status".
-        Omit flows if only the default (flow 1).
-
+        Format: "<point>/<name>/<job>{<flows>}:status".
         """
-        if self.flow_nums == {1}:
-            flows = ""
-        else:
-            flows = (
-                "("
-                f"{','.join(str(i) for i in self.flow_nums) or 'none'}"
-                ")"
-            )
         return (
-            f"{self.identity}/{self.submit_num:02d}{flows}:{self.state}"
+            f"{self.identity}/{self.submit_num:02d}"
+            f"{stringify_flow_nums(self.flow_nums)}:{self.state}"
         )
 
     def copy_to_reload_successor(self, reload_successor, check_output):

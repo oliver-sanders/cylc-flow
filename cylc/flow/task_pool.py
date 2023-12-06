@@ -71,7 +71,12 @@ from cylc.flow.task_outputs import (
 )
 from cylc.flow.task_queues.independent import IndepQueueManager
 
-from cylc.flow.flow_mgr import FLOW_ALL, FLOW_NONE, FLOW_NEW
+from cylc.flow.flow_mgr import (
+    stringify_flow_nums,
+    FLOW_ALL,
+    FLOW_NONE,
+    FLOW_NEW
+)
 
 
 if TYPE_CHECKING:
@@ -1495,8 +1500,7 @@ class TaskPool:
     ) -> Optional[TaskProxy]:
         """Spawn and return task point/name, or None.
 
-        Don't spawn if the task was previously spawned in this flow
-        (which includes, effectively, manually set of outputs).
+        Don't spawn if the task was previously completed in this flow
         """
         if not self.can_be_spawned(name, point):
             return None
@@ -1512,7 +1516,7 @@ class TaskPool:
             submit_num = 0
 
         flow_wait_done = False
-        for f_wait, old_fnums in snums.values():
+        for snum, (f_wait, old_fnums) in snums.items():
             # Flow_nums of previous instances.
             if (
                 not force and
@@ -1521,10 +1525,13 @@ class TaskPool:
                 if f_wait:
                     flow_wait_done = f_wait
                     break
+                if snum == 0:
+                    break
                 # Already spawned, or has manually set outputs.
                 LOG.warning(
-                    f"{point}/{name} (flow {flow_nums}) can't be spawned."
-                    " It already has outputs"
+                    f"{point}/{name}/{snum:02d}"
+                    f"{stringify_flow_nums(flow_nums)}"
+                    " can't be spawned. It already has outputs"
                 )
                 return None
 
