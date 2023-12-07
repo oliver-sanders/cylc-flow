@@ -2086,9 +2086,11 @@ class Scheduler:
                 if itask.state(
                     TASK_STATUS_PREPARING,
                     TASK_STATUS_SUBMITTED,
-                    TASK_STATUS_RUNNING
-                )
-                or (
+                    TASK_STATUS_RUNNING,
+                ) or (
+                    # This is because runahead limit gets truncated
+                    # to stop_point if there is one, so tasks spawned
+                    # beyond the stop_point must be runahead limited.
                     itask.state(TASK_STATUS_WAITING)
                     and not itask.state.is_runahead
                 )

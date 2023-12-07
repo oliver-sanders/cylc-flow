@@ -1,8 +1,6 @@
 # Test that `cylc set` has the same effect as natural output
 # completion: i.e. that downstream children are spawned as normal.
 
-# DEBUG mode required: we search for "removed from active pool" in the log.
-
 [scheduler]
     [[events]]
         abort on stall timeout = True
@@ -46,7 +44,7 @@
             cylc set --flow=2 --output=out1 --output=out2 "${CYLC_WORKFLOW_ID}//1/foo"
 
             # Set bar outputs after it is gone from the pool.
-            cylc__job__poll_grep_workflow_log -E "1/bar.* removed from active pool"
+            cylc__job__poll_grep_workflow_log -E "1/bar.* removed"
             cylc set --flow=2 --output=out1 --output=out2 "${CYLC_WORKFLOW_ID}//1/bar"
         """
     [[qux, quw, fux, fuw]]

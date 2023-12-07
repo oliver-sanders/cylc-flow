@@ -284,11 +284,12 @@ class TaskPool:
 
         for itask in release_me:
             self.rh_release_and_queue(itask)
-            self.spawn_to_rh_limit(
-                itask.tdef,
-                itask.tdef.next_point(itask.point),
-                itask.flow_nums
-            )
+            if itask.flow_nums:
+                self.spawn_to_rh_limit(
+                    itask.tdef,
+                    itask.tdef.next_point(itask.point),
+                    itask.flow_nums
+                )
             released = True
 
         return released
@@ -302,6 +303,10 @@ class TaskPool:
            - (Cylc7 back compat: a task succeeded or failed)
         * The max future offset might have changed.
         * The runahead limit config or task pool might have changed (reload).
+
+        This is a collective task pool computation. Call it once at the end
+        of a group operation such as removal of multiple tasks (not after
+        every individual task operation).
 
         Start from earliest point with unfinished tasks. Partially satisfied
         and incomplete tasks count too because they still need to run.
@@ -767,7 +772,7 @@ class TaskPool:
 
     def spawn_if_parentless(self, tdef, point, flow_nums):
         """Spawn a task if parentless, regardless of runahead limit."""
-        if point is not None and tdef.is_parentless(point):
+        if flow_nums and point is not None and tdef.is_parentless(point):
             ntask = self.get_or_spawn_task(
                 point, tdef.name, flow_nums
             )
@@ -777,7 +782,7 @@ class TaskPool:
     def remove(self, itask, reason=""):
         """Remove a task from the pool."""
 
-        if itask.state.is_runahead:
+        if itask.state.is_runahead and itask.flow_nums:
             # If removing a parentless runahead-limited task
             # auto-spawn its next instance first.
             self.spawn_if_parentless(
@@ -786,7 +791,7 @@ class TaskPool:
                 itask.flow_nums
             )
 
-        msg = "removed from active pool"
+        msg = "removed"
         if reason:
             msg += f" ({reason})"
         try:
@@ -1008,6 +1013,9 @@ class TaskPool:
             self.task_name_list,
             self.config.runtime['descendants']
         )
+
+        if self.compute_runahead():
+            self.release_runahead_tasks()
 
         # Now queue all tasks that are ready to run
         for itask in self.get_tasks():
@@ -1367,6 +1375,9 @@ class TaskPool:
             # Task finished.
             self.remove_if_complete(itask)
 
+        if self.compute_runahead():
+            self.release_runahead_tasks()
+
     def remove_if_complete(self, itask):
         """Remove a finished task if required outputs are complete.
 
@@ -1384,13 +1395,8 @@ class TaskPool:
                   (C7 failed tasks don't count toward runahead limit)
         """
         if cylc.flow.flags.cylc7_back_compat:
-
             if not itask.state(TASK_STATUS_FAILED, TASK_OUTPUT_SUBMIT_FAILED):
                 self.remove(itask, 'completed')
-
-            if self.compute_runahead():
-                self.release_runahead_tasks()
-
             return
 
         if itask.state(TASK_STATUS_EXPIRED):
@@ -1410,9 +1416,6 @@ class TaskPool:
             self.stop_task_finished = True
 
         self.remove(itask, reason)
-
-        if self.compute_runahead():
-            self.release_runahead_tasks()
 
     def spawn_on_all_outputs(
         self, itask: TaskProxy, completed_only: bool = False
@@ -1710,6 +1713,9 @@ class TaskPool:
                 if trans is not None:
                     self._set_outputs_itask(trans, outputs)
 
+        if self.compute_runahead():
+            self.release_runahead_tasks()
+
     def _set_outputs_itask(
         self,
         itask: 'TaskProxy',
@@ -1920,17 +1926,18 @@ class TaskPool:
                         *TASK_STATUSES_ACTIVE, TASK_STATUS_PREPARING)
                     and not itask.flow_nums
                 ):
+                    # Don't spawn successor if the task is parentless.
                     self.remove(itask, "flow stopped")
+
+        if self.compute_runahead():
+            self.release_runahead_tasks()
 
     def log_task_pool(self, log_lvl=logging.DEBUG):
         """Log content of task pool, for debugging."""
         LOG.log(
             log_lvl,
             "\n".join(
-                f"* {itask} status={itask.state.status}"
-                f" runahead={itask.state.is_runahead}"
-                f" queued={itask.state.is_queued}"
-                for itask in self.get_tasks()
+                f"* {itask}" for itask in self.get_tasks()
             )
         )
 
