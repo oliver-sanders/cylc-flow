@@ -762,7 +762,11 @@ class TaskPool:
                     self.rh_release_and_queue(ntask)
             point = tdef.next_point(point)
 
-        # Once more (for the rh-limited task: don't rh release it!)
+        # Once more for the runahead-limited task (don't release it).
+        self.spawn_if_parentless(tdef, point, flow_nums)
+
+    def spawn_if_parentless(self, tdef, point, flow_nums):
+        """Spawn a task if parentless, regardless of runahead limit."""
         if point is not None and tdef.is_parentless(point):
             ntask = self.get_or_spawn_task(
                 point, tdef.name, flow_nums
@@ -771,7 +775,17 @@ class TaskPool:
                 self.add_to_pool(ntask)
 
     def remove(self, itask, reason=""):
-        """Remove a task from the pool (e.g. after a reload)."""
+        """Remove a task from the pool."""
+
+        if itask.state.is_runahead:
+            # If removing a parentless runahead-limited task
+            # auto-spawn its next instance first.
+            self.spawn_if_parentless(
+                itask.tdef,
+                itask.tdef.next_point(itask.point),
+                itask.flow_nums
+            )
+
         msg = "removed from active pool"
         if reason:
             msg += f" ({reason})"
