@@ -31,8 +31,9 @@ on those outputs.
 
 Implied outputs are set automatically:
   - started implies submitted
-  - custom outputs imply started
-  - succeeded and failed imply started, and all custom outputs
+  - custom outputs imply submitted and started
+  - succeeded implies submitted, started, and all required custom outputs
+  - failed implies submitted and started
   - expired does not imply other outputs
 
 Examples:

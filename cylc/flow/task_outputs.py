@@ -291,7 +291,7 @@ class TaskOutputs:
            - do not complete other implied outputs automatically (doing so
                would break error detection based on required outputs)
 
-        Note that submitted and started are *implied* but later outputs, but
+        Note that submitted and started are *implied* by later outputs, but
         submitted is not necessarily *required*.
 
         """
