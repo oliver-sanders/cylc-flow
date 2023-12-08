@@ -337,8 +337,6 @@ async def test_auto_expansion(flow, scheduler, start, raikura):
 
             for task in ('a', 'b'):
                 itask = schd.pool.get_task(IntegerPoint('1'), task)
-                schd.pool._set_outputs_itask(itask, [TASK_OUTPUT_SUBMITTED])
-                schd.pool._set_outputs_itask(itask, [TASK_OUTPUT_STARTED])
                 schd.pool._set_outputs_itask(itask, [TASK_OUTPUT_SUCCEEDED])
 
             await schd.update_data_structure()

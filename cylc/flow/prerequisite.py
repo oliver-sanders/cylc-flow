@@ -76,7 +76,7 @@ class Prerequisite:
         self._all_satisfied = None
 
     def __str__(self):
-        # TODO make this more useful
+        """Useful for debugging; could do with better formatting."""
         return f"{self.point}: {self.satisfied}, {self.conditional_expression}"
 
     def instantaneous_hash(self):
