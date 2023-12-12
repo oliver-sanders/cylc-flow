@@ -107,20 +107,6 @@ def pool_get_task_ids(
     )
 
 
-def pool_get_proxy_by_id(
-    pool: List['TaskProxy'],
-    identity: str
-) -> Optional['TaskProxy']:
-    """Return a task proxy from a pool by ID, else None."""
-    try:
-        return next(
-            itask for itask in pool.get_tasks()
-            if itask.identity == identity
-        )
-    except StopIteration:
-        return None
-
-
 def get_task_ids(
     name_point_list: Iterable[Tuple[str, Union['PointBase', str, int]]]
 ) -> List[str]:
@@ -1278,44 +1264,34 @@ async def test_set_failed_complete(
     flow,
     scheduler,
     start,
+    one_conf,
     log_filter,
     db_select: Callable
 ):
     """Test manual completion of an incomplete failed task."""
-    id_ = flow(
-        {
-            'scheduler': {
-                'allow implicit tasks': 'True',
-            },
-            'scheduling': {
-                'graph': {
-                    'R1': "foo"
-                }
-            }
-        }
-    )
+    id_ = flow(one_conf)
     schd = scheduler(id_)
     async with start(schd) as log:
-        foo = schd.pool.get_tasks()[0]
-        foo.state_reset(is_queued=False)
+        one = schd.pool.get_tasks()[0]
+        one.state_reset(is_queued=False)
 
-        schd.pool.task_events_mgr.process_message(foo, 1, "failed")
+        schd.pool.task_events_mgr.process_message(one, 1, "failed")
         assert log_filter(
-            log, regex="1/foo.* setting missed output: submitted")
+            log, regex="1/one.* setting missed output: submitted")
         assert log_filter(
-            log, regex="1/foo.* setting missed output: started")
+            log, regex="1/one.* setting missed output: started")
         assert log_filter(
             log, regex="failed.* did not complete required outputs")
 
         # Set failed task complete via default "set" args.
-        schd.pool.set([foo.identity], None, None, ['all'])
+        schd.pool.set([one.identity], None, None, ['all'])
 
         assert log_filter(
-            log, contains='output 1/foo:succeeded completed')
+            log, contains='output 1/one:succeeded completed')
 
         db_outputs = db_select(
             schd, True, 'task_outputs', 'outputs',
-            **{'name': 'foo'}
+            **{'name': 'one'}
         )
         assert (
             sorted(loads((db_outputs[0])[0])) == [
@@ -1364,7 +1340,7 @@ async def test_set_prereqs(
         )
 
         # get the 1/baz task proxy
-        baz = pool_get_proxy_by_id(schd.pool, "1/baz")
+        baz = schd.pool.get_task(IntegerPoint("1"), "baz")
         assert not baz.state.prerequisites_all_satisfied()
 
         # set its other prereq
@@ -1416,7 +1392,7 @@ async def test_set_outputs_live(
         assert pool_get_task_ids(schd.pool) == ["1/foo"]
 
         # fake submitted, running, failed
-        foo = pool_get_proxy_by_id(schd.pool, "1/foo")
+        foo = schd.pool.get_task(IntegerPoint("1"), "foo")
         foo.state_reset(is_queued=False)
         schd.pool.task_events_mgr.process_message(foo, 1, 'failed')
 

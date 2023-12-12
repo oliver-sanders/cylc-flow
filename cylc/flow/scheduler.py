@@ -919,7 +919,7 @@ class Scheduler:
 
         """
         uuid = str(uuid4())
-        LOG.info(f"{log_lines[0]} id={uuid}\n{log_lines[1]}")
+        LOG.info(f"{log_lines[0]} ID={uuid}\n{log_lines[1]}")
         self.command_queue.put(
             (
                 uuid,
@@ -945,7 +945,7 @@ class Scheduler:
                 uuid, name, args, kwargs = self.command_queue.get(False)
             except Empty:
                 break
-            msg = f'Command "{name}" actioned: id={uuid}'
+            msg = f'Command "{name}" ' + '{result}' + f'. ID={uuid}'
             try:
                 fcn = self.get_command_method(name)
                 n_warnings: Optional[int]
@@ -960,15 +960,20 @@ class Scheduler:
                     not isinstance(exc, CommandFailedError)
                 ):
                     LOG.error(traceback.format_exc())
-                LOG.error(f"{msg} failed:\n{exc}")
+                LOG.error(
+                    msg.format(result="failed") + f"\n{exc}"
+                )
             else:
                 if n_warnings:
                     LOG.info(
-                        f"{msg} with {n_warnings} warnings"
+                        msg.format(
+                            result=f"actioned with {n_warnings} warnings"
+                        )
                     )
                 else:
-                    LOG.info(f"{msg}")
+                    LOG.info(msg.format(result="actioned"))
                 self.is_updated = True
+
             self.command_queue.task_done()
 
     def info_get_graph_raw(self, cto, ctn, grouping=None):
