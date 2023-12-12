@@ -779,7 +779,7 @@ class TaskPool:
             if ntask is not None:
                 self.add_to_pool(ntask)
 
-    def remove(self, itask, reason=""):
+    def remove(self, itask, reason=None):
         """Remove a task from the pool."""
 
         if itask.state.is_runahead and itask.flow_nums:
@@ -791,9 +791,10 @@ class TaskPool:
                 itask.flow_nums
             )
 
-        msg = "removed"
-        if reason:
-            msg += f" ({reason})"
+        if reason is None:
+            msg = "completed"
+        else:
+            msg = f"removed ({reason})"
         try:
             del self.active_tasks[itask.point][itask.identity]
         except KeyError:
@@ -1396,13 +1397,12 @@ class TaskPool:
         """
         if cylc.flow.flags.cylc7_back_compat:
             if not itask.state(TASK_STATUS_FAILED, TASK_OUTPUT_SUBMIT_FAILED):
-                self.remove(itask, 'completed')
+                self.remove(itask)
             return
 
         if itask.state(TASK_STATUS_EXPIRED):
             reason = "expired"
         else:
-            reason = "completed"
             incomplete = itask.state.outputs.get_incomplete()
             if incomplete:
                 # Retain as an incomplete task.
@@ -1411,6 +1411,7 @@ class TaskPool:
                     f" {incomplete}"
                 )
                 return
+            reason = None
 
         if itask.identity == self.stop_task_id:
             self.stop_task_finished = True
@@ -1719,7 +1720,7 @@ class TaskPool:
     def _set_outputs_itask(
         self,
         itask: 'TaskProxy',
-        outputs: Optional[List[str]],
+        outputs: Optional[Iterable[str]],
     ) -> None:
         """Set requested outputs on a task and spawn associated children."""
 
@@ -1729,17 +1730,17 @@ class TaskPool:
         changed = False
         for output in outputs:
             # convert trigger label to output message
-            out = itask.state.outputs.get_msg(output)
+            msg = itask.state.outputs.get_msg(output)
             info = f'set: output {itask.identity}:{output}'
-            if out is None:
+            if msg is None:
                 LOG.warning(f"{info} not found")
                 continue
-            if itask.state.outputs.is_completed(out):
+            if itask.state.outputs.is_completed(msg):
                 LOG.info(f"{info} completed already")
                 continue
             changed = True
             self.task_events_mgr.process_message(
-                itask, logging.INFO, out, forced=True)
+                itask, logging.INFO, msg, forced=True)
             LOG.info(f"{info} completed")
 
         if changed and itask.transient:

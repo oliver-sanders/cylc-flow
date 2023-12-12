@@ -700,7 +700,7 @@ class Resolvers(BaseResolvers):
         else:
             log_user = f" from {user}"
 
-        log_msg1 = f'Command "{command}" received{log_user}:'
+        log_msg1 = f'Command "{command}" received{log_user}.'
 
         log_msg2 = (
             f"{command}("
