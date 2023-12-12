@@ -503,16 +503,16 @@ class TaskProxy:
             return True
         return False
 
-    def satisfy_me(self, prereqs) -> bool:
+    def satisfy_me(self, tokens: Tokens) -> bool:
         """Attempt to satisfy the given prerequisites.
 
         return True if all are valid, else False.
         """
-        bad = self.state.satisfy_me(prereqs)
+        bad = self.state.satisfy_me(tokens)  # TODO
         for err in bad:
             LOG.warning(
                 f"{self.identity} does not depend on"
-                f" {err[0]}/{err[1]}:{err[2]}"
+                f" {tokens.relative_id_with_selectors}"
             )
         return len(bad) == 0
 
