@@ -78,7 +78,6 @@ from cylc.flow.flow_mgr import (
     FLOW_NEW
 )
 
-
 if TYPE_CHECKING:
     from cylc.flow.config import WorkflowConfig
     from cylc.flow.cycling import IntervalBase, PointBase
@@ -90,28 +89,6 @@ if TYPE_CHECKING:
 
 
 Pool = Dict['PointBase', Dict[str, TaskProxy]]
-
-
-def prereqs_str_to_tokens(prereqs: List[str]) -> List[Tuple[str, str, str]]:
-    """Convert prerequisite strings to token tuples.
-
-    ["<cycle>/<task>:<sel>", ...] --> [(<cycle>, <task>, <sel>), ...]
-
-    Selector defaults to "succeeded".
-
-    Examples:
-        >>> prereqs_str_to_tokens(['1/b', '3/c:failed'])
-        [('1', 'b', 'succeeded'), ('3', 'c', 'failed')]
-
-    """
-    return [
-        (
-            t['cycle'], t['task'], t['task_sel'] or TASK_OUTPUT_SUCCEEDED
-        )
-        for t in [
-            Tokens(p, relative=True) for p in prereqs
-        ]
-    ]
 
 
 class TaskPool:
@@ -1340,9 +1317,7 @@ class TaskPool:
                 else:
                     tasks = [c_task]
                 for t in tasks:
-                    t.state.satisfy_me({
-                        (str(itask.point), itask.tdef.name, output)
-                    })
+                    t.satisfy_me([f"{itask.identity}:{output}"])
                     self.data_store_mgr.delta_task_prerequisite(t)
                     self.add_to_pool(t)
 
@@ -1461,9 +1436,7 @@ class TaskPool:
                     # not spawnable
                     continue
                 if completed_only:
-                    c_task.state.satisfy_me({
-                        (str(itask.point), itask.tdef.name, output)
-                    })
+                    c_task.satisfy_me([f"{itask.identity}:{output}"])
                     self.data_store_mgr.delta_task_prerequisite(c_task)
                 self.add_to_pool(c_task)
                 if (
@@ -1595,7 +1568,9 @@ class TaskPool:
             itask.tdef.has_abs_triggers and
             itask.state.prerequisites_are_not_all_satisfied()
         ):
-            itask.state.satisfy_me(self.abs_outputs_done)
+            itask.satisfy_me(
+                [f"{a[0]}/{a[1]}:{a[2]}" for a in self.abs_outputs_done]
+            )
 
         if flow_wait_done:
             for outputs_str, fnums in (
@@ -1610,7 +1585,7 @@ class TaskPool:
             self.spawn_on_all_outputs(itask, completed_only=True)
             return None
 
-        LOG.debug(f"[{itask}] spawned")
+        LOG.info(f"[{itask}] added to active window")
         self.db_add_new_flow_rows(itask)
         return itask
 
@@ -1747,12 +1722,22 @@ class TaskPool:
             # (note tasks states table gets updated from the task pool)
             self.workflow_db_mgr.put_update_task_state(itask)
 
-    def _set_prereqs_itask(self, itask, prereqs, flow_nums, flow_wait):
-        """Set prerequisites on a task in the pool."""
+    def _set_prereqs_itask(
+        self,
+        itask: 'TaskProxy',
+        prereqs: List[str],
+        flow_nums: Set[int],
+        flow_wait: bool
+    ) -> None:
+        """Set prerequisites on a task in the pool.
+
+        Prerequisite format: "cycle/task:message" or "all".
+
+        """
         if prereqs == ["all"]:
             itask.state.set_all_satisfied()
         else:
-            itask.satisfy_me(prereqs_str_to_tokens(prereqs))
+            itask.satisfy_me(prereqs)
         if (
             self.runahead_limit_point is not None
             and itask.point <= self.runahead_limit_point

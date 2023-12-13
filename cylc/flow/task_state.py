@@ -17,10 +17,13 @@
 """Task state related logic."""
 
 
-from typing import List
+from typing import List, Iterable, TYPE_CHECKING
 from cylc.flow.prerequisite import Prerequisite
 from cylc.flow.task_outputs import TaskOutputs
 from cylc.flow.wallclock import get_current_time_string
+
+if TYPE_CHECKING:
+    from cylc.flow.id import Tokens
 
 
 # Task status names and meanings.
@@ -307,19 +310,21 @@ class TaskState:
             )
         )
 
-    def satisfy_me(self, outputs):
+    def satisfy_me(
+        self,
+        outputs: Iterable['Tokens']
+    ) -> List['Tokens']:
         """Attempt to get my prerequisites satisfied."""
-        goodies = set()
+        not_used: List['Tokens'] = []
         for prereqs in [self.prerequisites, self.suicide_prerequisites]:
             for prereq in prereqs:
-                satisfied = prereq.satisfy_me(outputs)
-                if satisfied:
-                    self._is_satisfied = None
-                    self._suicide_is_satisfied = None
-                for out in outputs:
-                    if out in prereq.satisfied:
-                        goodies.add(out)
-        return set(outputs) - goodies
+                nope = prereq.satisfy_me(outputs)
+                if nope:
+                    not_used += nope
+                    continue
+                self._is_satisfied = None
+                self._suicide_is_satisfied = None
+        return not_used
 
     def xtriggers_all_satisfied(self):
         """Return True if all xtriggers are satisfied."""

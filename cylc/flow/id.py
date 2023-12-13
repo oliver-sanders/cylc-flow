@@ -31,6 +31,7 @@ from typing import (
 )
 
 from cylc.flow import LOG
+from cylc.flow.task_outputs import TASK_OUTPUT_SUCCEEDED
 
 
 class IDTokens(Enum):
@@ -387,6 +388,14 @@ class Tokens(dict):
 
         """
         return self.update_tokens(**other)
+
+    def to_prereq_tuple(self) -> Tuple[str, str, str]:
+        """Return (cycle, task, selector) as used for task prerequisites."""
+        return (
+            self['cycle'],
+            self['task'],
+            self['task_sel'] or TASK_OUTPUT_SUCCEEDED
+        )
 
     def duplicate(
         self,

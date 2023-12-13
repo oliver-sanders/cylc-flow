@@ -18,6 +18,7 @@
 
 import math
 import re
+from typing import Iterable, List, TYPE_CHECKING
 
 from cylc.flow.cycling.loader import get_point
 from cylc.flow.exceptions import TriggerExpressionError
@@ -26,6 +27,9 @@ from cylc.flow.data_messages_pb2 import (  # type: ignore
     PbCondition,
 )
 from cylc.flow.id import quick_relative_detokenise
+
+if TYPE_CHECKING:
+    from cylc.flow.id import Tokens
 
 
 class Prerequisite:
@@ -198,28 +202,25 @@ class Prerequisite:
                 '"%s":\n%s' % (self.get_raw_conditional_expression(), err_msg))
         return res
 
-    def satisfy_me(self, all_task_outputs):
-        """Evaluate prerequisite against known outputs.
+    def satisfy_me(self, outputs: Iterable['Tokens']) -> List['Tokens']:
+        """Attempt to satisfy me with given outputs.
 
-        Updates cache with the evaluation result.
+        Updates cache with the result.
+        Return which outputs were not used.
 
         """
-        # In Cylc 8 SOD we don't need to filter for relevant prerequisites.
-        # This only gets called for known prerequisites, except in bad or
-        # overly wide manual "cylc set" calls.
-
-        satisfied = False
-        for message in all_task_outputs:
-            if message in self.satisfied:
-                self.satisfied[message] = self.DEP_STATE_SATISFIED
-            else:
+        not_used = []
+        for output in outputs:
+            prereq = output.to_prereq_tuple()
+            if prereq not in self.satisfied:
+                not_used.append(output)
                 continue
-            satisfied = True
+            self.satisfied[prereq] = self.DEP_STATE_SATISFIED
             if self.conditional_expression is None:
                 self._all_satisfied = all(self.satisfied.values())
             else:
                 self._all_satisfied = self._conditional_is_satisfied()
-        return satisfied
+        return not_used
 
     def api_dump(self):
         """Return list of populated Protobuf data objects."""

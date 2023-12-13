@@ -21,13 +21,14 @@ from copy import copy
 from fnmatch import fnmatchcase
 from time import time
 from typing import (
-    Any, Callable, Dict, List, Set, Tuple, Optional, TYPE_CHECKING
+    Any, Callable, Dict, List, Set, Tuple, Optional, Iterable, TYPE_CHECKING
 )
 
 from metomi.isodatetime.timezone import get_local_time_zone
 
 from cylc.flow import LOG
 from cylc.flow.flow_mgr import stringify_flow_nums
+from cylc.flow.id import Tokens
 from cylc.flow.platforms import get_platform
 from cylc.flow.task_action_timer import TimerFlags
 from cylc.flow.task_state import (
@@ -44,7 +45,6 @@ from cylc.flow.cycling.iso8601 import (
 )
 
 if TYPE_CHECKING:
-    from cylc.flow.id import Tokens
     from cylc.flow.cycling import PointBase
     from cylc.flow.task_action_timer import TaskActionTimer
     from cylc.flow.taskdef import TaskDef
@@ -503,18 +503,20 @@ class TaskProxy:
             return True
         return False
 
-    def satisfy_me(self, tokens: Tokens) -> bool:
-        """Attempt to satisfy the given prerequisites.
+    def satisfy_me(self, outputs: Iterable[str]) -> None:
+        """Attempt to satisfy my prerequisites with given outputs.
 
-        return True if all are valid, else False.
+        The output strings are of the form "cycle/task:message"
+
         """
-        bad = self.state.satisfy_me(tokens)  # TODO
-        for err in bad:
+        LOG.warning(outputs)
+        tokens = [Tokens(p, relative=True) for p in outputs]
+        not_used = self.state.satisfy_me(tokens)
+        for output in not_used:
             LOG.warning(
                 f"{self.identity} does not depend on"
-                f" {tokens.relative_id_with_selectors}"
+                f" {output.relative_id_with_selectors}"
             )
-        return len(bad) == 0
 
     def clock_expire(self) -> bool:
         """Return True if clock expire time is up, else False."""
