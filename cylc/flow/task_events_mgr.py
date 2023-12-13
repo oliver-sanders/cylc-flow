@@ -627,7 +627,8 @@ class TaskEventsManager():
         for implied in (
             itask.state.outputs.get_incomplete_implied(msg0, forced)
         ):
-            # Check we have not missed any outputs e.g. by delayed poll.
+            # Process any incomplete implied outputs by faking the
+            # corresponding output message.
             LOG.warning(
                 f"[{itask}] setting missed output: {implied}")
             self.process_message(
@@ -640,15 +641,8 @@ class TaskEventsManager():
                     flag == self.FLAG_RECEIVED
                     and itask.state.is_gt(TASK_STATUS_RUNNING)
             ):
+                # Already running.
                 return True
-            if itask.state.status == TASK_STATUS_PREPARING:
-                # The started message must have arrived before the submitted
-                # one, so assume that a successful submission occurred and act
-                # accordingly. Note the submitted message is internal, whereas
-                # the started message comes in on the network.
-                self._process_message_submitted(itask, event_time)
-                self.spawn_children(itask, TASK_OUTPUT_SUBMITTED)
-
             self._process_message_started(itask, event_time)
             self.spawn_children(itask, TASK_OUTPUT_STARTED)
 
