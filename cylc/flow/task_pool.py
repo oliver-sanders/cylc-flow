@@ -1491,7 +1491,7 @@ class TaskPool:
 
         if self.config.final_point and point > self.config.final_point:
             # Only happens on manual trigger beyond FCP
-            LOG.warning(
+            LOG.debug(
                 'Not spawning %s/%s: beyond final cycle point', point, name)
             return False
 
