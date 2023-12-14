@@ -144,7 +144,8 @@ class TaskProxy:
             True whilst task is awaiting job prep, reset to False once the
             preparation has completed.
         .transient:
-            This is a transient proxy used for internal purposes.
+            This is a transient proxy - not to be added to the task pool, but
+            used e.g. to spawn children, or to get task-specific infomation.
 
     Args:
         tdef: The definition object of this task.

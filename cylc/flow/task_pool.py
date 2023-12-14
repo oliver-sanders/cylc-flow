@@ -1513,12 +1513,11 @@ class TaskPool:
                 not force and
                 set.intersection(flow_nums, old_fnums)
             ):
+                if not is_complete:
+                    break
                 if f_wait:
                     flow_wait_done = f_wait
                     break
-                if not is_complete:
-                    break
-                # Already spawned, or has manually set outputs.
                 LOG.warning(
                     f"{point}/{name}/{snum:02d}"
                     f"{stringify_flow_nums(flow_nums)}"
