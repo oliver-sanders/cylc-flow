@@ -510,7 +510,6 @@ class TaskProxy:
         The output strings are of the form "cycle/task:message"
 
         """
-        LOG.warning(outputs)
         tokens = [Tokens(p, relative=True) for p in outputs]
         not_used = self.state.satisfy_me(tokens)
         for output in not_used:
