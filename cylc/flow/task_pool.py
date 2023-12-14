@@ -212,7 +212,7 @@ class TaskPool:
         self.active_tasks.setdefault(itask.point, {})
         self.active_tasks[itask.point][itask.identity] = itask
         self.active_tasks_changed = True
-        LOG.debug(f"[{itask}] added to task pool")
+        LOG.info(f"[{itask}] added to active task pool")
 
         self.create_data_store_elements(itask)
 
@@ -1584,7 +1584,6 @@ class TaskPool:
             self.spawn_on_all_outputs(itask, completed_only=True)
             return None
 
-        LOG.info(f"[{itask}] added to active window")
         self.db_add_new_flow_rows(itask)
         return itask
 
