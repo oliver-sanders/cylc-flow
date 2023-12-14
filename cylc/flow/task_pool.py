@@ -1489,41 +1489,44 @@ class TaskPool:
         flow_wait: bool = False,
         transient: bool = False
     ) -> Optional[TaskProxy]:
-        """Spawn and return task point/name, or None.
+        """Spawn and return a proxy, or None if not spawnable.
 
-        Don't spawn if the task was previously completed in this flow
+        If previously completed for this flow: don't spawn it, but do spawn
+        its children if it was a flow-wait task.
+
         """
         if not self.can_be_spawned(name, point):
             return None
 
-        # Get submit number by flow_nums {flow_nums: submit_num, ...}
-        snums = self.workflow_db_mgr.pri_dao.select_submit_nums(
+        # Get details of previous instances of this task.
+        info = self.workflow_db_mgr.pri_dao.select_prev_instances(
             name, str(point)
         )
         try:
-            submit_num = max(s for s in snums.keys())
+            submit_num = max(s[0] for s in info)
         except ValueError:
             # Task never spawned in any flow.
             submit_num = 0
 
+        # Check if this task already completed in the past,
+        # or has not spawned children yet due to flow wait.
         flow_wait_done = False
-        for snum, (f_wait, old_fnums, is_complete) in snums.items():
-            # Flow_nums of previous instances.
-            if (
-                not force and
-                set.intersection(flow_nums, old_fnums)
-            ):
-                if not is_complete:
-                    break
+        completed = False
+        for snum, f_wait, old_fnums, is_complete in info:
+            if set.intersection(flow_nums, old_fnums):
                 if f_wait:
                     flow_wait_done = f_wait
+                if is_complete:
+                    completed = True
+                    LOG.warning(
+                        f"Not spawning {point}/{name}"
+                        f" for flow {stringify_flow_nums(flow_nums)}:"
+                        f" already completed via {point}/{name}/{snum:02d}"
+                        f"{stringify_flow_nums(old_fnums)}"
+                    )
                     break
-                LOG.warning(
-                    f"{point}/{name}/{snum:02d}"
-                    f"{stringify_flow_nums(flow_nums)}"
-                    " already completed in this flow"
-                )
-                return None
+        if completed and not force:
+            return None
 
         itask = TaskProxy(
             self.tokens,
@@ -1580,7 +1583,7 @@ class TaskPool:
                     for msg in json.loads(outputs_str):
                         itask.state.outputs.set_completed_by_msg(msg)
                     break
-            LOG.info(f"{itask} spawning after flow wait")
+            LOG.info(f"spawning children of {itask} after flow wait")
             self.spawn_on_all_outputs(itask, completed_only=True)
             return None
 
