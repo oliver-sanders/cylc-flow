@@ -229,7 +229,7 @@ async def test_command_logging(mock_flow, caplog, log_filter):
     caplog.set_level(logging.INFO, CYLC_LOG)
 
     await mock_flow.resolvers._mutation_mapper("stop", {}, meta)
-    assert log_filter(caplog, contains='Command "stop" received:')
+    assert log_filter(caplog, contains='Command "stop" received')
 
     # put_messages: only log for owner
     kwargs = {
@@ -244,4 +244,4 @@ async def test_command_logging(mock_flow, caplog, log_filter):
     meta["auth_user"] = "Dr Spock"
     await mock_flow.resolvers._mutation_mapper("put_messages", kwargs, meta)
     assert log_filter(
-        caplog, contains='Command "put_messages" received from Dr Spock:')
+        caplog, contains='Command "put_messages" received from Dr Spock')
