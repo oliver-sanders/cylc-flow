@@ -1346,7 +1346,7 @@ class TaskPool:
 
         self.remove_if_complete(itask)
 
-    def remove_if_complete(self, itask):
+    def remove_if_complete(self, itask: TaskProxy) -> bool:
         """Remove a finished task if required outputs are complete.
 
         Cylc 8:
@@ -1363,13 +1363,16 @@ class TaskPool:
                   (C7 failed tasks don't count toward runahead limit)
 
         """
+        ret = False
+
         if not itask.state(*TASK_STATUSES_FINAL):
-            return
+            return ret
 
         if cylc.flow.flags.cylc7_back_compat:
             if not itask.state(TASK_STATUS_FAILED, TASK_OUTPUT_SUBMIT_FAILED):
                 self.remove(itask)
-            return
+                ret = True
+            return ret
 
         if itask.state(TASK_STATUS_EXPIRED):
             reason = "expired"
@@ -1381,15 +1384,18 @@ class TaskPool:
                     f"[{itask}] did not complete required outputs:"
                     f" {incomplete}"
                 )
-                return
+                return ret
             reason = None
 
         if itask.identity == self.stop_task_id:
             self.stop_task_finished = True
 
         self.remove(itask, reason)
+        ret = True
         if self.compute_runahead():
             self.release_runahead_tasks()
+
+        return ret
 
     def spawn_on_all_outputs(
         self, itask: TaskProxy, completed_only: bool = False
