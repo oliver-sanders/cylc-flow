@@ -1349,6 +1349,8 @@ class TaskPool:
     def remove_if_complete(self, itask: TaskProxy) -> bool:
         """Remove a finished task if required outputs are complete.
 
+        Return True if removed else False.
+
         Cylc 8:
             - if complete:
               - remove task and recompute runahead
@@ -1363,39 +1365,41 @@ class TaskPool:
                   (C7 failed tasks don't count toward runahead limit)
 
         """
-        ret = False
-
         if not itask.state(*TASK_STATUSES_FINAL):
-            return ret
-
-        if cylc.flow.flags.cylc7_back_compat:
-            if not itask.state(TASK_STATUS_FAILED, TASK_OUTPUT_SUBMIT_FAILED):
-                self.remove(itask)
-                ret = True
-            return ret
-
-        if itask.state(TASK_STATUS_EXPIRED):
-            reason = "expired"
-        else:
-            incomplete = itask.state.outputs.get_incomplete()
-            if incomplete:
-                # Retain as an incomplete task.
-                LOG.warning(
-                    f"[{itask}] did not complete required outputs:"
-                    f" {incomplete}"
-                )
-                return ret
-            reason = None
+            return False
 
         if itask.identity == self.stop_task_id:
             self.stop_task_finished = True
 
-        self.remove(itask, reason)
-        ret = True
+        if cylc.flow.flags.cylc7_back_compat:
+            ret = False
+            if not itask.state(TASK_STATUS_FAILED, TASK_OUTPUT_SUBMIT_FAILED):
+                self.remove(itask)
+                ret = True
+            # Recompute runhead either way; failed tasks don't count in C7.
+            if self.compute_runahead():
+                self.release_runahead_tasks()
+            return ret
+
+        if itask.state(TASK_STATUS_EXPIRED):
+            self.remove(itask, "expired")
+            if self.compute_runahead():
+                self.release_runahead_tasks()
+            return True
+
+        incomplete = itask.state.outputs.get_incomplete()
+        if incomplete:
+            # Retain as an incomplete task.
+            LOG.warning(
+                f"[{itask}] did not complete required outputs:"
+                f" {incomplete}"
+            )
+            return False
+
+        self.remove(itask)
         if self.compute_runahead():
             self.release_runahead_tasks()
-
-        return ret
+        return True
 
     def spawn_on_all_outputs(
         self, itask: TaskProxy, completed_only: bool = False
