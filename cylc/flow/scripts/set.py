@@ -18,26 +18,31 @@
 
 """cylc set [OPTIONS] ARGS
 
-Manually set task prerequisites and outputs in a running workflow.
+Manually set task prerequisites or outputs in a running workflow.
 
-By default, set all required outputs complete (note that `succeeded` could be
-an optional output).
+By default, set all required outputs (note that `succeeded` could be an
+optional output).
 
-Setting prerequisites contributes to a task's readiness to run and promotes it
-to the scheduler's active window where clock and xtriggers will become active.
+Prerequitistes:
+  Setting prerequisites contributes to a task's readiness to run and promotes
+  it to the scheduler's active window where xtriggers will become active.
 
-Setting outputs affects task completion and spawns downstream tasks that depend
-on those outputs.
+Outputs:
+  Setting outputs affects task completion and spawns downstream tasks that
+  depend on those outputs.
 
-Implied outputs are set automatically:
-  - started implies submitted
-  - custom outputs imply submitted and started
-  - succeeded implies submitted, started, and all required custom outputs
-  - failed implies submitted and started
-  - expired does not imply other outputs
+  Implied outputs are set automatically:
+    - started implies submitted
+    - custom outputs imply submitted and started
+    - succeeded implies submitted, started, and all required custom outputs
+    - failed implies submitted and started
+    - expired does not imply other outputs
+
+CLI Completion:
+  Cylc can auto-complete prequisites and outputs for active tasks if you
+  specify the task in the command before attempting to complete these options.
 
 Examples:
-
   # complete all required outputs of 3/bar:
   $ cylc set my_workflow//3/bar
 
