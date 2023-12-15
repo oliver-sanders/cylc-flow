@@ -435,6 +435,26 @@ class WorkflowDatabaseManager:
         self.db_updates_map[self.TABLE_TASK_STATES].append(
             (set_args, where_args))
 
+    def put_update_task_flow_wait(self, itask):
+        """Update flow_wait status of a task, in the task_states table.
+
+        NOTE the task_states table is normally updated along with the task pool
+        table. This method is only needed as a final update for a non-pool task
+        that just spawned its children after a flow wait.
+        """
+        set_args = {
+            "time_updated": itask.state.time_updated,
+            "flow_wait": itask.flow_wait,
+        }
+        where_args = {
+            "cycle": str(itask.point),
+            "name": itask.tdef.name,
+            "flow_nums": serialise(itask.flow_nums),
+        }
+        self.db_updates_map.setdefault(self.TABLE_TASK_STATES, [])
+        self.db_updates_map[self.TABLE_TASK_STATES].append(
+            (set_args, where_args))
+
     def put_task_pool(self, pool: 'TaskPool') -> None:
         """Delete task pool table content and recreate from current task pool.
 

@@ -33,6 +33,7 @@ from json import loads
 from cylc.flow import CYLC_LOG
 from cylc.flow.cycling.integer import IntegerPoint
 from cylc.flow.cycling.iso8601 import ISO8601Point
+from cylc.flow.task_events_mgr import TaskEventsManager
 from cylc.flow.data_store_mgr import TASK_PROXIES
 from cylc.flow.task_outputs import (
     TASK_OUTPUT_STARTED,
@@ -1189,20 +1190,19 @@ async def test_detect_incomplete_tasks(
     If a task finishes without completing all required outputs, then it should
     be marked as incomplete.
     """
-    incomplete_final_task_states = [
-        TASK_STATUS_FAILED,
-        TASK_STATUS_EXPIRED,
-        TASK_STATUS_SUBMIT_FAILED,
-    ]
+    final_task_states = {
+        TASK_STATUS_FAILED: TaskEventsManager.EVENT_FAILED,
+        TASK_STATUS_EXPIRED: TaskEventsManager.EVENT_EXPIRED,
+        TASK_STATUS_SUBMIT_FAILED: TaskEventsManager.EVENT_SUBMIT_FAILED
+    }
     id_ = flow({
         'scheduler': {
             'allow implicit tasks': 'True',
         },
         'scheduling': {
             'graph': {
-                # a workflow with one task for each of the incomplete final
-                # task states
-                'R1': '\n'.join(incomplete_final_task_states)
+                # a workflow with one task for each of the final task states
+                'R1': '\n'.join(final_task_states.keys())
             }
         }
     })
@@ -1211,14 +1211,27 @@ async def test_detect_incomplete_tasks(
         itasks = schd.pool.get_tasks()
         for itask in itasks:
             # spawn the output corresponding to the task
-            schd.pool.spawn_on_output(itask, itask.tdef.name)
+            schd.pool.task_events_mgr.process_message(
+                itask, 1,
+                final_task_states[itask.tdef.name]
+            )
             # ensure that it is correctly identified as incomplete
             assert itask.state.outputs.get_incomplete()
             assert itask.state.outputs.is_incomplete()
-            assert log_filter(
-                log, contains=f"[{itask}] did not complete required outputs:")
-            # the task should not have been removed
-            assert itask in schd.pool.get_tasks()
+            if itask.tdef.name == TASK_STATUS_EXPIRED:
+                assert log_filter(
+                    log,
+                    contains=f"[{itask}] removed (expired)"
+                )
+                # the task should have been removed
+                assert itask not in schd.pool.get_tasks()
+            else:
+                assert log_filter(
+                    log,
+                    contains=f"[{itask}] did not complete required outputs:"
+                )
+                # the task should not have been removed
+                assert itask in schd.pool.get_tasks()
 
 
 async def test_future_trigger_final_point(

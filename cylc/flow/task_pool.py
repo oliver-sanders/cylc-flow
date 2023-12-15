@@ -66,7 +66,6 @@ from cylc.flow.platforms import get_platform
 from cylc.flow.task_outputs import (
     TASK_OUTPUT_EXPIRED,
     TASK_OUTPUT_FAILED,
-    TASK_OUTPUT_SUCCEEDED,
     TASK_OUTPUT_SUBMIT_FAILED,
 )
 from cylc.flow.task_queues.independent import IndepQueueManager
@@ -294,7 +293,6 @@ class TaskPool:
         With force=True we recompute the limit even if the base point has not
         changed (needed if max_future_offset changed, or on reload).
         """
-
         limit = self.config.runahead_limit  # e.g. P2 or P2D
         count_cycles = False
         with suppress(TypeError):
@@ -1280,6 +1278,12 @@ class TaskPool:
 
         suicide = []
         for c_name, c_point, is_abs in children:
+
+            if itask.flow_wait:
+                LOG.warning(
+                    f"[{itask}] not spawning on {output}: flow wait requested")
+                continue
+
             if is_abs:
                 self.abs_outputs_done.add(
                     (str(itask.point), itask.tdef.name, output))
@@ -1298,7 +1302,6 @@ class TaskPool:
             elif (
                 c_task is None
                 and (itask.flow_nums or forced)
-                and not itask.flow_wait
             ):
                 # If child is not in the pool already, and parent belongs to a
                 # flow (so it can spawn children), and parent is not waiting
@@ -1341,18 +1344,7 @@ class TaskPool:
                 msg += " suiciding while active"
             self.remove(c_task, msg)
 
-        if not forced and output in [
-            # final task statuses
-            TASK_OUTPUT_SUCCEEDED,
-            TASK_OUTPUT_EXPIRED,
-            TASK_OUTPUT_FAILED,
-            TASK_OUTPUT_SUBMIT_FAILED,
-        ]:
-            # Task finished.
-            self.remove_if_complete(itask)
-
-        if self.compute_runahead():
-            self.release_runahead_tasks()
+        self.remove_if_complete(itask)
 
     def remove_if_complete(self, itask):
         """Remove a finished task if required outputs are complete.
@@ -1369,7 +1361,11 @@ class TaskPool:
             else (failed):
                 - retain and recompute runahead
                   (C7 failed tasks don't count toward runahead limit)
+
         """
+        if not itask.state(*TASK_STATUSES_FINAL):
+            return
+
         if cylc.flow.flags.cylc7_back_compat:
             if not itask.state(TASK_STATUS_FAILED, TASK_OUTPUT_SUBMIT_FAILED):
                 self.remove(itask)
@@ -1392,6 +1388,8 @@ class TaskPool:
             self.stop_task_finished = True
 
         self.remove(itask, reason)
+        if self.compute_runahead():
+            self.release_runahead_tasks()
 
     def spawn_on_all_outputs(
         self, itask: TaskProxy, completed_only: bool = False
@@ -1487,76 +1485,94 @@ class TaskPool:
         force: bool = False,
         is_manual_submit: bool = False,
         flow_wait: bool = False,
-        transient: bool = False
     ) -> Optional[TaskProxy]:
-        """Spawn and return a proxy, or None if not spawnable.
+        """Spawn a task if not already completed for this flow, or if forced.
 
-        If previously completed for this flow: don't spawn it, but do spawn
-        its children if it was a flow-wait task.
+        If already completed in flow wait, spawn its children via a transient.
+        # (TODO - use "cylc set" machinery for this?)
 
         """
         if not self.can_be_spawned(name, point):
             return None
 
-        # Get details of previous instances of this task.
+        # Get previous submit info for this task.
         info = self.workflow_db_mgr.pri_dao.select_prev_instances(
             name, str(point)
         )
+
         try:
             submit_num = max(s[0] for s in info)
         except ValueError:
-            # Task never spawned in any flow.
+            # never spawned before.
             submit_num = 0
 
-        # Check if this task already completed in the past,
-        # or has not spawned children yet due to flow wait.
         flow_wait_done = False
         completed = False
-        for snum, f_wait, old_fnums, is_complete in info:
-            if set.intersection(flow_nums, old_fnums):
-                if f_wait:
+        orig_fnums = set()
+
+        if not force:
+            for snum, f_wait, old_fnums, is_complete in info:
+                if set.intersection(flow_nums, old_fnums):
+                    completed = is_complete
                     flow_wait_done = f_wait
-                if is_complete:
-                    completed = True
+                    orig_fnums = old_fnums
+                    if not completed:
+                        # There may be multiple entries with flow overlap due
+                        # to merges (they'll have have same snum and f_wait);
+                        # keep going to find the complete one, if any .
+                        continue
                     LOG.warning(
-                        f"Not spawning {point}/{name}"
-                        f" for flow {stringify_flow_nums(flow_nums)}:"
-                        f" already completed via {point}/{name}/{snum:02d}"
+                        f"{point}/{name} already completed for flow"
+                        f" {stringify_flow_nums(flow_nums)} via"
+                        f" {point}/{name}/{snum:02d}"
                         f"{stringify_flow_nums(old_fnums)}"
                     )
                     break
-        if completed and not force:
+
+        if completed and not flow_wait_done and not force:
             return None
 
-        itask = TaskProxy(
-            self.tokens,
-            self.config.get_taskdef(name),
+        if force:
+            transient = False
+        else:
+            transient = completed
+
+        itask = self._get_task_proxy(
             point,
+            self.config.get_taskdef(name),
             flow_nums,
             submit_num=submit_num,
             is_manual_submit=is_manual_submit,
             flow_wait=flow_wait,
             transient=transient
         )
-        if (name, point) in self.tasks_to_hold:
-            LOG.info(f"[{itask}] holding (as requested earlier)")
-            self.hold_active_task(itask)
-        elif self.hold_point and itask.point > self.hold_point:
-            # Hold if beyond the workflow hold point
-            LOG.info(
-                f"[{itask}] holding (beyond workflow "
-                f"hold point: {self.hold_point})"
-            )
-            self.hold_active_task(itask)
+        if not itask:
+            return None
 
-        # Don't spawn if it depends on a task beyond the stop point.
+        if not transient:
+            if (name, point) in self.tasks_to_hold:
+                LOG.info(f"[{itask}] holding (as requested earlier)")
+                self.hold_active_task(itask)
+            elif self.hold_point and itask.point > self.hold_point:
+                # Hold if beyond the workflow hold point
+                LOG.info(
+                    f"[{itask}] holding (beyond workflow "
+                    f"hold point: {self.hold_point})"
+                )
+                self.hold_active_task(itask)
+
+        # Don't add to pool if it depends on a task beyond the stop point.
         # """
         #    foo
         #    foo[+P1] & bar => baz
         # """
         # Here, in the final cycle bar wants to spawn baz, but that would stall
         # the workflow because baz also depends on foo after the final point.
-        if self.stop_point and itask.point <= self.stop_point:
+        if (
+            not transient
+            and self.stop_point
+            and itask.point <= self.stop_point
+        ):
             for pct in itask.state.prerequisites_get_target_points():
                 if pct > self.stop_point:
                     LOG.warning(
@@ -1567,56 +1583,62 @@ class TaskPool:
 
         # Satisfy any absolute triggers.
         if (
-            itask.tdef.has_abs_triggers and
-            itask.state.prerequisites_are_not_all_satisfied()
+            not transient
+            and itask.tdef.has_abs_triggers
+            and itask.state.prerequisites_are_not_all_satisfied()
         ):
             itask.satisfy_me(
                 [f"{a[0]}/{a[1]}:{a[2]}" for a in self.abs_outputs_done]
             )
 
         if flow_wait_done:
-            for outputs_str, fnums in (
-                self.workflow_db_mgr.pri_dao.select_task_outputs(
-                    itask.tdef.name, str(itask.point))
-            ).items():
-                if flow_nums.intersection(fnums):
-                    for msg in json.loads(outputs_str):
-                        itask.state.outputs.set_completed_by_msg(msg)
-                    break
-            LOG.info(f"spawning children of {itask} after flow wait")
+            LOG.info(f"spawning children of {itask.identity} after flow wait")
             self.spawn_on_all_outputs(itask, completed_only=True)
+            # update flow wait status in the DB
+            itask.flow_wait = False
+            itask.flow_nums = orig_fnums
+            self.workflow_db_mgr.put_update_task_flow_wait(itask)
             return None
 
-        self.db_add_new_flow_rows(itask)
+        self.db_add_new_flow_rows(itask)  # TODO: move this higher up
         return itask
 
-    def _spawn_transient(
+    def _get_task_proxy(
         self,
         point: 'PointBase',
         taskdef: 'TaskDef',
         flow_nums: 'FlowNums',
-        flow_wait: bool
+        flow_wait: bool = False,
+        transient: bool = False,
+        is_manual_submit: bool = False,
+        submit_num: int = 0
     ) -> Optional['TaskProxy']:
-        """Spawn a transient task proxy and update its outputs from the DB."""
+        """Spawn a task proxy and update its outputs from the DB. """
 
-        itask = self.spawn_task(
-            taskdef.name,
+        if not self.can_be_spawned(taskdef.name, point):
+            return None
+
+        itask = TaskProxy(
+            self.tokens,
+            taskdef,
             point,
             flow_nums,
             flow_wait=flow_wait,
-            force=True,
-            transient=True
+            submit_num=submit_num,
+            transient=transient,
+            is_manual_submit=is_manual_submit
         )
+
         if itask is not None:
-            # Update outputs that were already completed.
-            for outputs_str, fnums in (
-                self.workflow_db_mgr.pri_dao.select_task_outputs(
-                    itask.tdef.name, str(itask.point))
-            ).items():
+            # Update it with outputs that were already completed.
+            info = self.workflow_db_mgr.pri_dao.select_task_outputs(
+                itask.tdef.name, str(itask.point))
+            if not info:
+                self.db_add_new_flow_rows(itask)
+            for outputs_str, fnums in info.items():
                 if flow_nums.intersection(fnums):
                     for msg in json.loads(outputs_str):
                         itask.state.outputs.set_completed_by_msg(msg)
-                    break
         return itask
 
     def set(  # noqa: A003
@@ -1685,8 +1707,8 @@ class TaskPool:
                 self._set_prereqs_tdef(
                     point, tdef, prereqs, flow_nums, flow_wait)
             else:
-                trans = self._spawn_transient(
-                    point, tdef, flow_nums, flow_wait)
+                trans = self._get_task_proxy(
+                    point, tdef, flow_nums, flow_wait, transient=True)
                 if trans is not None:
                     self._set_outputs_itask(trans, outputs)
 
@@ -1722,6 +1744,7 @@ class TaskPool:
         if changed and itask.transient:
             # (note tasks states table gets updated from the task pool)
             self.workflow_db_mgr.put_update_task_state(itask)
+            self.workflow_db_mgr.put_update_task_outputs(itask)
 
     def _set_prereqs_itask(
         self,
@@ -1769,7 +1792,7 @@ class TaskPool:
         return fnums
 
     def remove_tasks(self, items):
-        """Remove tasks from the pool."""
+        """Remove tasks from the pool (forced by command)."""
         itasks, _, bad_items = self.filter_task_proxies(items)
         for itask in itasks:
             self.remove(itask, 'request')

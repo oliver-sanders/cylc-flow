@@ -1,7 +1,5 @@
-# Check if a task gets triggered multiple times with --wait, only the outputs
-# from the last run in the flow are spawned when the flow catches up.
-
-# baz should run twice in flow 1, then y should trigger off of the second baz.
+# If a task gets triggered twice with --wait, the outputs from both runs should be
+# spawned when the flow catches up.
 
 [scheduling]
    [[graph]]
