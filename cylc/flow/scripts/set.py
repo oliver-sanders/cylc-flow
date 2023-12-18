@@ -39,7 +39,7 @@ Outputs:
     - expired does not imply other outputs
 
 CLI Completion:
-  Cylc can auto-complete prequisites and outputs for active tasks if you
+  Cylc can auto-complete prerequisites and outputs for active tasks if you
   specify the task in the command before attempting to complete these options.
 
 Examples:
