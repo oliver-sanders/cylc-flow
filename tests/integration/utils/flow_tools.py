@@ -53,7 +53,7 @@ def _make_src_flow(src_path, conf):
 def _make_flow(
     cylc_run_dir: Union[Path, str],
     test_dir: Path,
-    conf: Union[dict, str],
+    conf: dict,
     name: Optional[str] = None,
     id_: Optional[str] = None,
 ) -> str:
@@ -65,12 +65,18 @@ def _make_flow(
             name = str(uuid1())
         flow_run_dir = (test_dir / name)
     flow_run_dir.mkdir(parents=True, exist_ok=True)
-    reg = str(flow_run_dir.relative_to(cylc_run_dir))
-    if isinstance(conf, dict):
-        conf = flow_config_str(conf)
+    id_ = str(flow_run_dir.relative_to(cylc_run_dir))
+    # set the default simulation runtime to zero (can be overridden)
+    (
+        conf.setdefault('runtime', {})
+        .setdefault('root', {})
+        .setdefault('simulation', {})
+        .setdefault('default run length', 'PT0S')
+    )
+    conf = flow_config_str(conf)
     with open((flow_run_dir / WorkflowFiles.FLOW_FILE), 'w+') as flow_file:
         flow_file.write(conf)
-    return reg
+    return id_
 
 
 @contextmanager
@@ -78,13 +84,17 @@ def _make_scheduler():
     """Return a scheduler object for a flow registration."""
     schd: Scheduler = None  # type: ignore[assignment]
 
-    def __make_scheduler(reg: str, **opts: Any) -> Scheduler:
-        # This allows paused_start to be overridden:
-        opts = {'paused_start': True, **opts}
+    def __make_scheduler(id_: str, **opts: Any) -> Scheduler:
+        opts = {
+            # safe n sane defaults for integration tests
+            'paused_start': True,
+            'run_mode': 'simulation',
+            **opts,
+        }
         options = RunOptions(**opts)
         # create workflow
         nonlocal schd
-        schd = Scheduler(reg, options)
+        schd = Scheduler(id_, options)
         return schd
 
     yield __make_scheduler

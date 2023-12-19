@@ -21,7 +21,7 @@ from os.path import expandvars
 from pprint import pformat
 import sqlite3
 import traceback
-from typing import TYPE_CHECKING, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Iterable, List, Optional, Tuple, Union
 
 from cylc.flow import LOG
 from cylc.flow.exceptions import PlatformLookupError
@@ -179,6 +179,13 @@ class CylcWorkflowDAO:
     TABLE_BROADCAST_STATES = "broadcast_states"
     TABLE_INHERITANCE = "inheritance"
     TABLE_WORKFLOW_PARAMS = "workflow_params"
+    # BACK COMPAT: suite_params
+    # This Cylc 7 DB table is needed to allow workflow-state
+    # xtriggers (and the `cylc workflow-state` command) to
+    # work with Cylc 7 workflows.
+    # url: https://github.com/cylc/cylc-flow/issues/5236
+    # remove at: 8.x
+    TABLE_SUITE_PARAMS = "suite_params"
     TABLE_WORKFLOW_FLOWS = "workflow_flows"
     TABLE_WORKFLOW_TEMPLATE_VARS = "workflow_template_vars"
     TABLE_TASK_JOBS = "task_jobs"
@@ -545,13 +552,10 @@ class CylcWorkflowDAO:
         for row_idx, row in enumerate(self.connect().execute(stmt)):
             callback(row_idx, list(row))
 
-    def select_workflow_params(self, callback):
-        """Select from workflow_params.
+    def select_workflow_params(self) -> Iterable[Tuple[str, Optional[str]]]:
+        """Select all from workflow_params.
 
-        Invoke callback(row_idx, row) on each row, where each row contains:
-            [key, value]
-
-        E.g. a row might be ['UTC mode', '1']
+        E.g. a row might be ('UTC mode', '1')
         """
         stmt = rf'''
             SELECT
@@ -559,8 +563,7 @@ class CylcWorkflowDAO:
             FROM
                 {self.TABLE_WORKFLOW_PARAMS}
         '''  # nosec (table name is code constant)
-        for row_idx, row in enumerate(self.connect().execute(stmt)):
-            callback(row_idx, list(row))
+        return self.connect().execute(stmt)
 
     def select_workflow_flows(self, flow_nums):
         """Return flow data for selected flows."""
@@ -602,6 +605,19 @@ class CylcWorkflowDAO:
         """  # nosec (table name is code constant)
         result = self.connect().execute(stmt).fetchone()
         return int(result[0]) if result else 0
+
+    def select_workflow_params_run_mode(self):
+        """Return original run_mode for workflow_params."""
+        stmt = rf"""
+            SELECT
+                value
+            FROM
+                {self.TABLE_WORKFLOW_PARAMS}
+            WHERE
+                key == 'run_mode'
+        """  # nosec (table name is code constant)
+        result = self.connect().execute(stmt).fetchone()
+        return result[0] if result else None
 
     def select_workflow_template_vars(self, callback):
         """Select from workflow_template_vars.

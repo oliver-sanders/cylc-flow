@@ -4,13 +4,60 @@ List of notable changes, for a complete list of changes see the
 [closed milestones](https://github.com/cylc/cylc-flow/milestones?state=closed)
 for each release.
 
-<!-- The topmost release date is automatically updated by GitHub Actions. When
-creating a new release entry be sure to copy & paste the span tag with the
-`actions:bind` attribute, which is used by a regex to find the text to be
-updated. Only the first match gets replaced, so it's fine to leave the old
-ones in. -->
+<!--
+NOTE: Do not add entries here, use towncrier fragments instead:
+$ towncrier create <PR-number>.<break|feat|fix>.md --content "Short description"
+-->
 
-## __cylc-8.2.0 (<span actions:bind='release-date'>Upcoming</span>)__
+<!-- towncrier release notes start -->
+
+## __cylc-8.2.3 (Released 2023-11-02)__
+
+### 🔧 Fixes
+
+[#5660](https://github.com/cylc/cylc-flow/pull/5660) - Re-worked graph n-window algorithm for better efficiency.
+
+[#5753](https://github.com/cylc/cylc-flow/pull/5753) - Fixed bug where execution time limit polling intervals could end up incorrectly applied
+
+[#5776](https://github.com/cylc/cylc-flow/pull/5776) - Ensure that submit-failed tasks are marked as incomplete (so remain visible) when running in back-compat mode.
+
+[#5791](https://github.com/cylc/cylc-flow/pull/5791) - fix a bug where if multiple clock triggers are set for a task only one was being satisfied.
+
+## __cylc-8.2.2 (Released 2023-10-05)__
+
+### 🚀 Enhancements
+
+[#5237](https://github.com/cylc/cylc-flow/pull/5237) - Back-compat: allow workflow-state xtriggers (and the `cylc workflow-state`
+  command) to read Cylc 7 databases.
+
+### 🔧 Fixes
+
+[#5693](https://github.com/cylc/cylc-flow/pull/5693) - Log command issuer, if not the workflow owner, for all commands.
+
+[#5694](https://github.com/cylc/cylc-flow/pull/5694) - Don't fail config file parsing if current working directory does not exist.
+  (Note however this may not be enough to prevent file parsing commands failing
+  elsewhere in the Python library).
+
+[#5704](https://github.com/cylc/cylc-flow/pull/5704) - Fix off-by-one error in automatic upgrade of Cylc 7 "max active cycle points" to Cylc 8 "runahead limit".
+
+[#5708](https://github.com/cylc/cylc-flow/pull/5708) - Fix runahead limit at start-up, with recurrences that start beyond the limit.
+
+[#5755](https://github.com/cylc/cylc-flow/pull/5755) - Fixes an issue where submit-failed tasks could be incorrectly considered as completed rather than causing the workflow to stall.
+
+
+## __cylc-8.2.1 (Released 2023-08-14)__
+
+### 🔧 Fixes
+
+[#5631](https://github.com/cylc/cylc-flow/pull/5631) - Fix bug in remote clean for workflows that generated `flow.cylc` files at runtime.
+
+[#5650](https://github.com/cylc/cylc-flow/pull/5650) - Fix a bug preventing clean-up of finished tasks in the GUI and TUI.
+
+[#5685](https://github.com/cylc/cylc-flow/pull/5685) - Fix "cylc pause" command help (it targets workflows, not tasks, but was
+  printing task-matching documentation as well).
+
+
+## __cylc-8.2.0 (<span actions:bind='release-date'>Released 2023-07-21</span>)__
 
 ### Breaking Changes
 
@@ -21,12 +68,22 @@ issue which could cause jobs to fail if this variable became too long.
 
 ### Enhancements
 
--[#5605](https://github.com/cylc/cylc-flow/pull/5605) - A shorthand for defining
--a list of strings - Before: `cylc command -s "X=['a', 'bc', 'd']"` - After:
--`cylc command -z X=a,bc,d`.
+[#5992](https://github.com/cylc/cylc-flow/pull/5992) -
+Before trying to reload the workflow definition, the scheduler will
+now wait for preparing tasks to submit, and pause the workflow.
+After successful reload the scheduler will unpause the workflow.
+
+[#5605](https://github.com/cylc/cylc-flow/pull/5605) - Added `-z` shorthand
+option for defining a list of strings:
+- Before: `cylc command -s "X=['a', 'bc', 'd']"`
+- After: `cylc command -z X=a,bc,d`.
 
 [#5537](https://github.com/cylc/cylc-flow/pull/5537) - Allow parameters
 in family names to be split, e.g. `<foo>FAM<bar>`.
+
+[#5589](https://github.com/cylc/cylc-flow/pull/5589) - Move to workflow
+directory during file parsing, to give the template processor access to
+workflow files.
 
 [#5405](https://github.com/cylc/cylc-flow/pull/5405) - Improve scan command
 help, and add scheduler PID to the output.
@@ -42,18 +99,14 @@ Add the `-n` short option for `--workflow-name` to `cylc vip`; rename the `-n`
 short option for `--no-detach` to `-N`; add `-r` as a short option for
 `--run-name`.
 
-[#5525](https://github.com/cylc/cylc-flow/pull/5525) - Jobs can use scripts
-in `share/bin` and Python modules in `share/lib/python`.
+[#5231](https://github.com/cylc/cylc-flow/pull/5231) - stay up for a timeout
+period on restarting a completed workflow, to allow for manual triggering.
 
-[#5328](https://github.com/cylc/cylc-flow/pull/5328) -
-Efficiency improvements to reduce task management overheads on the Scheduler.
-
+[#5549](https://github.com/cylc/cylc-flow/pull/5549),
 [#5546](https://github.com/cylc/cylc-flow/pull/5546) -
-`cylc lint` will provide a non-zero return code if any issues are identified.
-This can be overridden using the new `--exit-zero` flag.
-
-[#5549](https://github.com/cylc/cylc-flow/pull/5549) - A large number of
-enhancements to `cylc lint`:
+Various enhancements to `cylc lint`:
+* `cylc lint` will provide a non-zero return code if any issues are identified.
+  This can be overridden using the new `--exit-zero` flag.
 * Fix numbering of lint codes (n.b. lint codes should now be permenantly
   unchanging, but may have changed since Cylc 8.1.4, so `pyproject.toml` files
   may need updating).
@@ -64,11 +117,39 @@ enhancements to `cylc lint`:
 * Only check for missing Jinja2 shebangs in `flow.cylc` and
   `suite.rc` files.
 
+
+[#5525](https://github.com/cylc/cylc-flow/pull/5525) - Jobs can use scripts
+in `share/bin` and Python modules in `share/lib/python`.
+
 ### Fixes
+
+[#5328](https://github.com/cylc/cylc-flow/pull/5328) -
+Efficiency improvements to reduce task management overheads on the Scheduler.
+
+[#5611](https://github.com/cylc/cylc-flow/pull/5611) -
+Improve the documentation of the GraphQL schema.
+
+[#5616](https://github.com/cylc/cylc-flow/pull/5616) -
+Improve PBS support for job IDs with trailing components.
+
+[#5619](https://github.com/cylc/cylc-flow/pull/5619) -
+Fix an issue where the `task_pool` table in the database wasn't being updated
+in a timely fashion when tasks completed.
+
+[#5606](https://github.com/cylc/cylc-flow/pull/5606) -
+Task outputs and messages are now validated to avoid conflicts with built-in
+outputs, messages, qualifiers and Cylc keywords.
+
+[#5614](https://github.com/cylc/cylc-flow/pull/5614) -
+Fix a bug in Cylc 7 compatibility mode where tasks running in the `none` flow
+(e.g. via `cylc trigger --flow=none`) would trigger downstream tasks.
 
 [#5604](https://github.com/cylc/cylc-flow/pull/5604) -
 Fix a possible issue where workflows started using
 `cylc play --start-cycle-point` could hang during startup.
+
+[#5573](https://github.com/cylc/cylc-flow/pull/5573) - Fix bug that ran a
+queued waiting task even after removal by `cylc remove`.
 
 [#5524](https://github.com/cylc/cylc-flow/pull/5524) - Logging includes timestamps
 for `cylc play` when called by `cylc vip` or `cylc vr`.
@@ -83,6 +164,13 @@ mode before running pre-configure plugins.
 [#5587](https://github.com/cylc/cylc-flow/pull/5587) -
 Permit commas in xtrigger arguments and fix minor issues with the parsing of
 xtrigger function signatures.
+
+[#5618](https://github.com/cylc/cylc-flow/pull/5618) -
+Fix a bug when rapidly issuing the same/opposite commands e.g. pausing &
+resuming a workflow.
+
+[#5625](https://github.com/cylc/cylc-flow/pull/5625) - Exclude `setuptools`
+version (v67) which results in dependency check failure with editable installs.
 
 ## __cylc-8.1.4 (<span actions:bind='release-date'>Released 2023-05-04</span>)__
 
