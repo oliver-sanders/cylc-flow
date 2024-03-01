@@ -24,6 +24,40 @@
 
 ###############################################################################
 # The main function for a cylc job.
+
+
+cylc_message () {
+    if [[ "$1" != '--' ]]; then
+        return
+    fi
+    shift  # workflow, job, message
+    if [[ $# -lt 3 ]]; then
+        local message="$1"
+    else
+        local message="$3"
+    fi
+
+    local event_time="$(date --iso=seconds)"
+    local severity=INFO
+
+    # named_pipe="${CYLC_TASK_LOG_ROOT}.pipe"
+    # if [[ ! -e "$named_pipe" ]]; then
+    #     mkfifo "$named_pipe"
+    # fi
+    # echo "# ${event_time}:::${severity}:::${message}"
+    # echo "${event_time}:::${severity}:::${message}" > "$named_pipe"
+
+    echo "CYLC_MESSAGE=${event_time}|${severity}|${message}" >> "${CYLC_TASK_LOG_ROOT}.status"
+}
+
+cylc () {
+    echo "# cylc $@"
+    local cmd="$1"
+    shift
+    "cylc_${cmd}" "$@"
+}
+
+
 cylc__job__main() {
     # Export CYLC_ workflow and task environment variables
     cylc__job__inst__cylc_env

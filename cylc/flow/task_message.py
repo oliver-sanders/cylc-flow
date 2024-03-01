@@ -103,6 +103,7 @@ def write_messages(workflow, job_id, messages, event_time):
 
 
 def send_messages(workflow, job_id, messages, event_time):
+    raise Exception('Got through to here!!!')
     workflow = os.path.normpath(workflow)
     try:
         pclient = get_client(workflow)

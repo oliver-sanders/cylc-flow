@@ -882,6 +882,7 @@ class Scheduler:
                 task_msg = self.message_queue.get(block=False)
             except Empty:
                 break
+            # print('#', task_msg)
             self.message_queue.task_done()
             tokens = Tokens(task_msg.job_id, relative=True)
             # task ID (job stripped)
