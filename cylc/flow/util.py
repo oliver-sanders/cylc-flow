@@ -20,15 +20,36 @@ from contextlib import suppress
 from functools import partial
 import json
 import re
+from textwrap import dedent
 from typing import (
     Any,
     Callable,
     List,
     Sequence,
+    Tuple,
 )
 
 
+BOOL_SYMBOLS: List[str] = ['x', '✓']
+
 _NAT_SORT_SPLIT = re.compile(r'([\d\.]+)')
+
+
+def sstrip(text):
+    """Simple function to dedent and strip text.
+
+    Examples:
+        >>> print(sstrip('''
+        ...     foo
+        ...       bar
+        ...     baz
+        ... '''))
+        foo
+          bar
+        baz
+
+    """
+    return dedent(text).strip()
 
 
 def natural_sort_key(key: str, fcns=(int, str)) -> List[Any]:
@@ -336,3 +357,35 @@ def _get_exception(
     }
 
     return error_class(message, **context)
+
+
+class NameWalker(ast.NodeVisitor):
+    """AST node visitor which records all variable names in an expression.
+
+    Examples:
+        >>> tree = ast.parse('(foo and bar) or baz or qux')
+        >>> walker = NameWalker()
+        >>> walker.visit(tree)
+        >>> sorted(walker.names)
+        ['bar', 'baz', 'foo', 'qux']
+
+    """
+
+    def __init__(self):
+        super().__init__()
+        self._names = set()
+
+    def visit(self, node):
+        if isinstance(node, ast.Name):
+            self._names.add(node.id)
+        return super().visit(node)
+
+    @property
+    def names(self):
+        return self._names
+
+
+def get_variable_names(expression):
+    walker = NameWalker()
+    walker.visit(ast.parse(expression))
+    return walker.names

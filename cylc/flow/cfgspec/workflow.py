@@ -996,6 +996,141 @@ with Conf(
             can be explicitly configured to provide or override default
             settings for all tasks in the workflow.
         '''):
+            Conf('completion', VDR.V_STRING, desc='''
+                Define the condition for task completion.
+
+                The completion condition is evaluated when a task finishes
+                executing. It is a validation check which confirms that the
+                task has generated the outputs it was expected to.
+
+                If the task fails this check it's outputs are considered
+                :term:`incomplete` and a warning will be raised alerting you
+                that something has gone wrong which requires investigation.
+
+                .. note::
+
+                   An event hook for this warning will follow in a future
+                   release of Cylc.
+
+                By default, the completion condition ensures that all required
+                outputs, i.e. outputs which appear in the graph but are not
+                marked as optional with the ``?`` character, are completed.
+
+                E.g., in this example, the task ``foo`` must generate the
+                required outputs ``succeeded`` and ``x``, it may or may not
+                generate the optional output ``y``:
+
+                .. code-block:: cylc-graph
+
+                   foo => bar
+                   foo:x => x
+                   foo:y? => y
+
+                In Python syntax that condition looks like this:
+
+                .. code-block:: python
+
+                   # the task must succeeded and generate the custom output "x"
+                   succeeded and x
+
+                The ``completion`` configuration allows you to override the
+                default completion to suit your needs.
+
+                E.G., in this example, the task ``foo`` has three optional
+                outputs, ``x``, ``y`` and ``z``:
+
+                .. code-block:: cylc-graph
+
+                   foo:x? => x
+                   foo:y? => y
+                   foo:z? => z
+                   x | y | z => bar
+
+                Because all three of these outputs are optional, if none of
+                them are generated, the task's outputs will still be
+                considered complete.
+
+                If you wanted to require that at least one of these outputs is
+                generated you could configure the completion confition like so:
+
+                .. code-block:: python
+
+                   # the task must succeeded and generate at least one of the
+                   # outputs "x" or "y" or "z":
+                   succeeded and (x or y or z)
+
+                .. note::
+
+                   For the completion expression, hyphens in task outputs
+                   are converted into underscores e.g:
+
+                   .. code-block:: cylc
+
+                      [runtime]
+                          [[foo]]
+                              completion = succeeded and my_output # underscore
+                              [[[outputs]]]
+                                  my-output = 'my custom task output' # hyphen
+
+                .. note::
+
+                   In some cases the succeeded output might not explicitly
+                   appear in the graph, e.g:
+
+                   .. code-block:: cylc-graph
+
+                      foo:x? => x
+
+                   In these cases succeess is presumed to be required unless
+                   explicitly stated otherwise, either in the graph:
+
+                   .. code-block:: cylc-graph
+
+                      foo?
+                      foo:x? => x
+
+                   Or in the completion expression:
+
+                   .. code-block:: cylc
+
+                      completion = x  # no reference to succeeded here
+
+
+                .. hint::
+
+                   If task outputs are optional in the graph they must also
+                   be optional in the completion condition and vice versa.
+
+                   .. code-block:: cylc
+
+                      [scheduling]
+                          [[graph]]
+                              R1 = """
+                                  # ERROR: this should be "a? => b"
+                                  a => b
+                              """
+                      [runtime]
+                          [[a]]
+                              # this completion condition implies that the
+                              # succeeded output is optional
+                              completion = succeeded or failed
+
+                .. rubric:: Examples
+
+                ``succeeded``
+                   The task must succeed.
+                ``succeeded or (failed and my_error)``
+                   The task can fail, but only if it also yields the custom
+                   output ``my_error``.
+                ``succeeded and (x or y or z)``
+                   The task must succeed and yield at least one of the
+                   custom outputs, x, y or z.
+                ``(a and b) or (c and d)``
+                   One pair of these outputs must be yielded for the task
+                   to be complete.
+
+                .. versionadded:: 8.3.0
+            ''')
             Conf('platform', VDR.V_STRING, desc='''
                 The name of a compute resource defined in
                 :cylc:conf:`global.cylc[platforms]` or

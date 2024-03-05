@@ -90,7 +90,11 @@ from cylc.flow.task_events_mgr import (
 from cylc.flow.task_id import TaskID
 from cylc.flow.task_outputs import (
     TASK_OUTPUT_SUCCEEDED,
-    TaskOutputs
+    TASK_OUTPUT_FINISHED,
+    TaskOutputs,
+    get_completion_expression,
+    get_optional_outputs,
+    trigger_to_completion_variable,
 )
 from cylc.flow.task_trigger import TaskTrigger, Dependency
 from cylc.flow.taskdef import TaskDef
@@ -519,6 +523,8 @@ class WorkflowConfig:
         self.mem_log("config.py: before load_graph()")
         self.load_graph()
         self.mem_log("config.py: after load_graph()")
+
+        self._set_completion_expressions()
 
         self.process_runahead_limit()
 
@@ -1007,6 +1013,197 @@ class WorkflowConfig:
                     f"initial cycle point {self.start_point}"
                 )
             LOG.warning(msg)
+
+    def _set_completion_expressions(self):
+        """Sets and checks completion expressions for each task.
+
+        If a task does not have a user-defined completion expression, then set
+        one according to the default rules.
+
+        If a task does have a used-defined completion expression, then ensure
+        it is consistent with the use of outputs in the graph.
+        """
+        for name, taskdef in self.taskdefs.items():
+            expr = taskdef.rtconfig['completion']
+            if expr:
+                # check the user-defined expression
+                self._check_completion_expression(name, expr)
+            else:
+                # derive a completion expression for this taskdef
+                expr = get_completion_expression(taskdef)
+
+            if name not in self.taskdefs:
+                # this is a family -> nothing more to do here
+                continue
+
+            # update both the sparse and dense configs to make these values
+            # visible to "cylc config" to make the completion expression more
+            # transparent to users.
+            # NOTE: we have to update both because we are setting this value
+            # late on in the process after the dense copy has been made
+            self.pcfg.sparse.setdefault(
+                'runtime', {}
+            ).setdefault(
+                name, {}
+            )['completion'] = expr
+            self.pcfg.dense['runtime'][name]['completion'] = expr
+
+            # update the task's runtime config to make this value visible to
+            # the data store
+            # NOTE: we have to do this because we are setting this value late
+            # on after the TaskDef has been created
+            taskdef.rtconfig['completion'] = expr
+
+    def _check_completion_expression(self, task_name: str, expr: str) -> None:
+        """Checks a user-defined completion expression.
+
+        Args:
+            task_name:
+                The name of the task we are checking.
+            expr:
+                The completion expression as defined in the config.
+
+        """
+        # check completion expressions are not being used in compat mode
+        if cylc.flow.flags.cylc7_back_compat:
+            raise WorkflowConfigError(
+                '[runtime][<namespace>]completion cannot be used'
+                ' in Cylc 7 compatibility mode.'
+            )
+
+        # check for invalid triggers in the expression
+        if 'submit-failed' in expr:
+            raise WorkflowConfigError(
+                f'Error in [runtime][{task_name}]completion:'
+                f'\nUse "submit_failed" rather than "submit-failed"'
+                ' in completion expressions.'
+            )
+        elif '-' in expr:
+            raise WorkflowConfigError(
+                f'Error in [runtime][{task_name}]completion:'
+                f'\n  {expr}'
+                '\nReplace hyphens with underscores in task outputs when'
+                ' used in completion expressions.'
+            )
+
+        # get the outputs and completion expression for this task
+        try:
+            outputs = self.taskdefs[task_name].outputs
+        except KeyError:
+            # this is a family -> we'll check integrity for each task that
+            # inherits from it
+            return
+
+        # get the optional/required outputs defined in the graph
+        graph_optionals = {
+            # completion_variable: is_optional
+            trigger_to_completion_variable(output): (
+                None if is_required is None else not is_required
+            )
+            for output, (_, is_required)
+            in outputs.items()
+        }
+
+        # get the optional/required outputs defined in the expression
+        try:
+            # this involves running the expression which also validates it
+            expression_optionals = get_optional_outputs(expr, outputs)
+        except NameError as exc:
+            # expression references an output which has not been registered
+            error = exc.args[0][5:]
+
+            if f"'{TASK_OUTPUT_FINISHED}'" in error:
+                # the finished output cannot be used in completion expressions
+                # see proposal point 5::
+                # https://cylc.github.io/cylc-admin/proposal-optional-output-extension.html#proposal
+                raise WorkflowConfigError(
+                    f'Error in [runtime][{task_name}]completion:'
+                    f'\n  {expr}'
+                    '\nThe "finished" output cannot be used in completion'
+                    ' expressions, use "succeeded or failed".'
+                )
+
+            raise WorkflowConfigError(
+                # NOTE: str(exc) == "name 'x' is not defined" tested in
+                # tests/integration/test_optional_outputs.py
+                f'Error in [runtime][{task_name}]completion:'
+                f'\nInput {error}'
+            )
+        except Exception as exc:  # includes InvalidCompletionExpression
+            # expression contains non-whitelisted syntax or any other error in
+            # the expression e.g. SyntaxError
+            raise WorkflowConfigError(
+                f'Error in [runtime][{task_name}]completion:'
+                f'\n{str(exc)}'
+            )
+
+        # ensure consistency between the graph and the completion expression
+        for compvar in (
+            {
+                *graph_optionals,
+                *expression_optionals
+            }
+        ):
+            # is the output optional in the graph?
+            graph_opt = graph_optionals.get(compvar)
+            # is the output optional in the completion expression?
+            expr_opt = expression_optionals.get(compvar)
+
+            # True = is optional
+            # False = is required
+            # None = is not referenced
+
+            # graph_opt  expr_opt
+            # True       True       ok
+            # True       False      not ok
+            # True       None       not ok [1]
+            # False      True       not ok [1]
+            # False      False      ok
+            # False      None       not ok
+            # None       True       ok
+            # None       False      ok
+            # None       None       ok
+
+            # [1] applies only to "submit-failed" and "expired"
+
+            output = compvar  # TODO
+
+            if graph_opt is True and expr_opt is False:
+                raise WorkflowConfigError(
+                    f'{task_name}:{output} is optional in the graph'
+                    ' (? symbol), but required in the completion'
+                    f' expression:\n{expr}'
+                )
+
+            if graph_opt is False and expr_opt is None:
+                raise WorkflowConfigError(
+                    f'{task_name}:{output} is required in the graph,'
+                    ' but not referenced in the completion'
+                    f' expression\n{expr}'
+                )
+
+            if (
+                graph_opt is True
+                and expr_opt is None
+                and compvar in {'submit_failed', 'expired'}
+            ):
+                raise WorkflowConfigError(
+                    f'{task_name}:{output} is permitted in the graph'
+                    ' but is not referenced in the completion'
+                    ' expression (so is not permitted by it).'
+                    f'\nTry: completion = "{expr} or {output}"'
+                )
+
+            if (
+                graph_opt is False
+                and expr_opt is True
+                and compvar not in {'submit_failed', 'expired'}
+            ):
+                raise WorkflowConfigError(
+                    f'{task_name}:{output} is required in the graph,'
+                    ' but optional in the completion expression'
+                    f'\n{expr}'
+                )
 
     def _expand_name_list(self, orig_names):
         """Expand any parameters in lists of names."""
