@@ -997,13 +997,15 @@ with Conf(
             settings for all tasks in the workflow.
         '''):
             Conf('completion', VDR.V_STRING, desc='''
-                Define the condition for task completion.
+                Define the condition for task output completion.
 
-                The completion condition is evaluated when a task finishes
-                executing. It is a validation check which confirms that the
+                The completion condition is evaluated when a task attains
+                a final status - i.e., once it finished executing (``succeeded``
+                or ``failed``) or it ``submit-failed``, or ``expired``.
+                It is a validation check which confirms that the
                 task has generated the outputs it was expected to.
 
-                If the task fails this check it's outputs are considered
+                If the task fails this check its outputs are considered
                 :term:`incomplete` and a warning will be raised alerting you
                 that something has gone wrong which requires investigation.
 
@@ -1017,7 +1019,7 @@ with Conf(
                 marked as optional with the ``?`` character, are completed.
 
                 E.g., in this example, the task ``foo`` must generate the
-                required outputs ``succeeded`` and ``x``, it may or may not
+                required outputs ``succeeded`` and ``x`` and it may or may not
                 generate the optional output ``y``:
 
                 .. code-block:: cylc-graph
@@ -1030,13 +1032,13 @@ with Conf(
 
                 .. code-block:: python
 
-                   # the task must succeeded and generate the custom output "x"
+                   # the task must succeed and generate the custom output "x"
                    succeeded and x
 
                 The ``completion`` configuration allows you to override the
                 default completion to suit your needs.
 
-                E.G., in this example, the task ``foo`` has three optional
+                E.g., in this example, the task ``foo`` has three optional
                 outputs, ``x``, ``y`` and ``z``:
 
                 .. code-block:: cylc-graph
@@ -1051,18 +1053,19 @@ with Conf(
                 considered complete.
 
                 If you wanted to require that at least one of these outputs is
-                generated you could configure the completion confition like so:
+                generated you can configure the completion condition like so:
 
                 .. code-block:: python
 
-                   # the task must succeeded and generate at least one of the
+                   # the task must succeed and generate at least one of the
                    # outputs "x" or "y" or "z":
                    succeeded and (x or y or z)
 
                 .. note::
 
                    For the completion expression, hyphens in task outputs
-                   are converted into underscores e.g:
+                   are converted into underscores to allow
+                   evaluation by Python, e.g.:
 
                    .. code-block:: cylc
 

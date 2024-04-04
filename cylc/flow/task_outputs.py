@@ -102,7 +102,7 @@ def get_completion_expression(tdef: 'TaskDef') -> str:
 
     1. Create a completion expression that ensures all required ouputs are
        completed.
-    2. If succeess is optional add "or succeeded or failed" onto the end.
+    2. If success is optional add "or succeeded or failed" onto the end.
     3. If submission is optional add "or submit-failed" onto the end of it.
     4. If expiry is optional add "or expired" onto the end of it.
     """
@@ -133,7 +133,7 @@ def get_completion_expression(tdef: 'TaskDef') -> str:
         tdef.outputs[TASK_OUTPUT_SUCCEEDED][1] is False
         or tdef.outputs[TASK_OUTPUT_FAILED][1] is False
     ):
-        # failure is tolerated -> ensure the task succeess OR fails
+        # failure is tolerated -> ensure the task succeeds OR fails
         if required:
             # required outputs are required only if the task actually runs
             parts = [
@@ -205,7 +205,7 @@ def get_optional_outputs(
     # determine which triggers are used in the expression
     used_compvars = get_variable_names(expression)
 
-    # all completion vairables which could appear in the expression
+    # all completion variables which could appear in the expression
     all_compvars = {trigger_to_completion_variable(out) for out in outputs}
 
     return {  # output: is_optional
@@ -306,7 +306,7 @@ class TaskOutputs:
         if (
             # Note, this interface sometimes gets called erroneously, so we
             # have to check that the message being set actually applies to
-            # these outputs before setting it
+            # these outputs before setting it.
             message in self._completed
             and self._completed[message] is False
         ):
@@ -315,7 +315,7 @@ class TaskOutputs:
         return False
 
     def is_message_complete(self, message: str) -> Optional[bool]:
-        """Return True if this messages is complete.
+        """Return True if this message is complete.
 
         Returns:
             * True if the message is complete.
