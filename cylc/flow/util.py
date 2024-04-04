@@ -29,8 +29,9 @@ from typing import (
     Tuple,
 )
 
-
-BOOL_SYMBOLS: List[str] = ['x', '✓']
+# U+2713 (check)
+# U+2A2F (vector cross product)
+BOOL_SYMBOLS: List[str] = ['⨯', '✓']
 
 _NAT_SORT_SPLIT = re.compile(r'([\d\.]+)')
 

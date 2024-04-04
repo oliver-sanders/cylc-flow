@@ -1000,7 +1000,7 @@ with Conf(
                 Define the condition for task output completion.
 
                 The completion condition is evaluated when a task attains
-                a final status - i.e., once it finished executing (``succeeded``
+                a final status - i.e. once it finished executing (``succeeded``
                 or ``failed``) or it ``submit-failed``, or ``expired``.
                 It is a validation check which confirms that the
                 task has generated the outputs it was expected to.

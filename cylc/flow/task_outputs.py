@@ -439,6 +439,7 @@ class TaskOutputs:
         ret: List[str] = []
         indent_level: int = 0
         op: Optional[str] = None
+        fence = '⦙'  # U+2999 (dotted fence)
         for part in RE_EXPR_SPLIT.split(self._completion_expression):
             if not part.strip():
                 continue
@@ -450,18 +451,19 @@ class TaskOutputs:
             elif part == '(':
                 if op:
                     ret.append(
-                        f'  |{_gutter}{(indent_space * indent_level)}'
+                        f'  {fence}{_gutter}{(indent_space * indent_level)}'
                         f'{op} {part}'
                     )
                 else:
                     ret.append(
-                        f'  |{_gutter}{(indent_space * indent_level)}{part}'
+                        f'  {fence}{_gutter}'
+                        f'{(indent_space * indent_level)}{part}'
                     )
                 indent_level += 1
             elif part == ')':
                 indent_level -= 1
                 ret.append(
-                    f'  |{_gutter}{(indent_space * indent_level)}{part}'
+                    f'  {fence}{_gutter}{(indent_space * indent_level)}{part}'
                 )
 
             else:
@@ -470,7 +472,7 @@ class TaskOutputs:
                 ]
                 is_complete = self._is_compvar_complete(part)
                 _pre = (
-                    f'{color_wrap(_symbol, is_complete)} |'
+                    f'{color_wrap(_symbol, is_complete)} {fence}'
                     f'{_gutter}{(indent_space * indent_level)}'
                 )
                 if op:
