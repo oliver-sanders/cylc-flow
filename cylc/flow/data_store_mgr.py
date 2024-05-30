@@ -2543,7 +2543,15 @@ class DataStoreMgr:
         tp_delta = self.updated[TASK_PROXIES].setdefault(
             tp_id, PbTaskProxy(id=tp_id))
         tp_delta.stamp = f'{tp_id}@{update_time}'
-        self._process_internal_task_proxy(itask, tp_delta)
+        tp_existing = PbTaskProxy(id=tp_id)
+
+        self._process_internal_task_proxy(itask, tp_existing)
+        statics = {'id'}
+        for field, _ in tp_existing.ListFields():
+            old_value = getattr(tp_delta, field.name, None)
+            if old_value and field.name not in statics:
+                tp_delta.ClearField(field.name)
+        tp_delta.MergeFrom(tp_existing)
 
         self.updates_pending = True
 
