@@ -56,6 +56,6 @@ jobs:
             echo '::info:: pushing update commit'
               git add -u
               git commit -m 'protobuf: updating generated files'
-              git push git@github.com:${{ github.repository }}.git HEAD:${{ github.head_ref }}
+              git push origin HEAD:${{ github.head_ref }}
             exit 0
           fi
