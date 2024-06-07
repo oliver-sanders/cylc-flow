@@ -44,7 +44,7 @@ jobs:
           # NOTE: "buf breaking" exits "100" for a missing file (i.e. new version not present on old branch)
             # --against 'https://github.com/cylc/cylc-flow.git#tag=${{ github.base_ref }},subdir=proto') \
           buf breaking \
-            --against 'https://github.com/oliver-sanders/cylc-flow.git#tag=${{ github.base_ref }},subdir=proto') \
+            --against 'https://github.com/oliver-sanders/cylc-flow.git#tag=${{ github.base_ref }},subdir=proto' \
             || ( \
               ret=$?; \
               if [[ $ret == 100 ]]; then exit 0; \
