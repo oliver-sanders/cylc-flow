@@ -16,9 +16,10 @@ jobs:
       - name: Install
         run: |
           # install protoc compiler
-          miniconda create -y -n protobuf
-          miniconda activate protobuf
-          miniconda install -y protobuf
+          conda init
+          conda create -y -n protobuf
+          conda activate protobuf
+          conda install -y protobuf
 
           # install bufbuild
           eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
@@ -38,7 +39,7 @@ jobs:
         run: |
           # generate .py and .pyi files from the .proto files
           eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
-          miniconda activate protobuf
+          conda activate protobuf
           cd proto
           buf generate
 
