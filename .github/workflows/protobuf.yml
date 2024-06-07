@@ -35,6 +35,7 @@ jobs:
           buf lint
 
       - name: Build
+        shell: bash
         run: |
           # generate .py and .pyi files from the .proto files
           eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
