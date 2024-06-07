@@ -23,10 +23,11 @@ jobs:
 
       - name: Install Bufbuild
         run: |
-          # NOTE: bufbuild does exist on conda-forge but hasn't been updated for a while
+          # activate homebrew (NOTE: must use "shell: bash -el {0}" to use this)
           eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"  # activate homebrew
+
+          # NOTE: bufbuild does exist on conda-forge but hasn't been updated for a while
           brew install bufbuild/buf/buf
-          buf --help
 
       - name: Lint
         run: |
@@ -34,6 +35,22 @@ jobs:
           eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"  # activate homebrew
           cd proto
           buf lint
+
+      - name: Compatibility
+        shell: bash -el {0}
+        run: |
+          eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"  # activate homebrew
+          cd proto
+          # NOTE: "buf breaking" exits "100" for a missing file (i.e. new version not present on old branch)
+            # --against 'https://github.com/cylc/cylc-flow.git#tag=${{ github.base_ref }},subdir=proto') \
+          buf breaking \
+            --against 'https://github.com/oliver-sanders/cylc-flow.git#tag=${{ github.base_ref }},subdir=proto') \
+            || ( \
+              ret=$?; \
+              if [[ $ret == 100 ]]; then exit 0; \
+              elif [[ $ret != 0 ]]; then echo '::error:: Breaking changes detected, create a new version of the protobuf schema if this is desired and increment the Cylc API number to match'; \
+            fi )
+          if
 
       - name: Build
         shell: bash -el {0}
