@@ -11,6 +11,12 @@ jobs:
     timeout-minutes: 10
 
     steps:
+      - name: Debug
+        run: |
+          echo "head_ref=${{ github.head_ref }}"
+          echo "repository=${{ github.repository }}"
+          echo "repository_owner=${{ github.repository_owner }}"
+
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -55,7 +61,7 @@ jobs:
           else
             echo '::info:: pushing update commit'
               git add -u
-              git commit -m 'protobuf: updating generated files'
+            git commit origin HEAD:${{ github.head_ref }}-m 'protobuf: updating generated files'
               git push
             exit 0
           fi
