@@ -13,15 +13,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install
-        run: |
-          # install protoc compiler
-          conda init
-          conda create -y -n protobuf
-          conda activate protobuf
-          conda install -y protobuf
+      - name: Install Protobuf
+        uses: mamba-org/setup-micromamba@v1
+        with:
+          environment-name: protobuf
+          create-args: protobuf
 
-          # install bufbuild
+      - name: Install Bufbuild
+        run: |
           eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
           brew install bufbuild/buf/buf
           buf --help
