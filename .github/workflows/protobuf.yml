@@ -24,14 +24,14 @@ jobs:
       - name: Install Bufbuild
         run: |
           # NOTE: bufbuild does exist on conda-forge but hasn't been updated for a while
-          eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+          eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"  # activate homebrew
           brew install bufbuild/buf/buf
           buf --help
 
       - name: Lint
         run: |
           # lint .proto files
-          eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+          eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"  # activate homebrew
           cd proto
           buf lint
 
@@ -39,7 +39,7 @@ jobs:
         shell: bash -el {0}
         run: |
           # generate .py and .pyi files from the .proto files
-          eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+          eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"  # activate homebrew
           micromamba activate protobuf
           cd proto
           buf generate
@@ -56,6 +56,6 @@ jobs:
             echo '::info:: pushing update commit'
               git add -u
               git commit -m 'protobuf: updating generated files'
-              git push ${{ github.repository_owner }} HEAD:${{ github.head_ref }}
+              git push git@github.com:${{ github.repository }}.git HEAD:${{ github.head_ref }}
             exit 0
           fi
