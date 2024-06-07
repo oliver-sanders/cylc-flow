@@ -15,6 +15,7 @@ jobs:
 
       - name: Install
         run: |
+          eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
           brew install bufbuild/buf/buf
 
       - name: Lint
