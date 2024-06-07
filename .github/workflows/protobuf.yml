@@ -21,9 +21,10 @@ jobs:
 
       - name: Lint
         run: |
-          buf --help
+          eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
           buf lint cylc/flow/data_messages.proto
 
       - name: Build
         run: |
+          eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
           buf build cylc/flow/data_messages.proto
