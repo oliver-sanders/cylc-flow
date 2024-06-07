@@ -2,7 +2,8 @@ name: protobuf
 
 on:
   pull_request:
-  workflow_dispatch:
+  # NOTE: don't run this on "workflow_dispatch" or "schedule" as it will commit
+  # directly to the branch
 
 jobs:
   protobuf:
@@ -49,13 +50,12 @@ jobs:
       - name: Commit & Push
         run: |
           if [[ -z $(git diff --stat) ]]; then
-            echo "::error:: No changes to ${INIT_FILE} occurred"
+            echo '::error:: No functional changes made to the protobuf schema'
             exit 0
           else
-            echo "::info:: pushing update commit"
+            echo '::info:: pushing update commit'
               git add -u
               git commit -m 'protobuf: updating generated files'
               git push
             exit 0
           fi
-
