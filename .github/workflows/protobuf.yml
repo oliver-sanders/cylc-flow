@@ -21,11 +21,10 @@ jobs:
 
       - name: Install Bufbuild
         run: |
+          # NOTE: bufbuild does exist on conda-forge but hasn't been updated for a while
           eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
           brew install bufbuild/buf/buf
           buf --help
-
-
 
       - name: Lint
         run: |
@@ -38,7 +37,7 @@ jobs:
         run: |
           # generate .py and .pyi files from the .proto files
           eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
-          conda activate protobuf
+          micromamba activate protobuf
           cd proto
           buf generate
 
