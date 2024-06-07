@@ -18,6 +18,7 @@ jobs:
         with:
           environment-name: protobuf
           create-args: protobuf
+          init-shell: bash
 
       - name: Install Bufbuild
         run: |
