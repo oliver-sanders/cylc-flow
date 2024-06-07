@@ -6,7 +6,7 @@ on:
 
 jobs:
   protobuf:
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     timeout-minutes: 10
 
     steps:
