@@ -21,10 +21,29 @@ jobs:
 
       - name: Lint
         run: |
+          # lint .proto files
           eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
-          buf lint cylc/flow/data_messages.proto
+          cd proto
+          buf lint
 
       - name: Build
         run: |
+          # generate .py and .pyi files from the .proto files
           eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
-          buf build cylc/flow/data_messages.proto
+          cd proto
+          buf generate
+
+      - name: Configure git
+        uses: cylc/release-actions/configure-git@v1
+
+      - name: Commit & Push
+        run: |
+          if [[ -z $(git diff --stat -- "$INIT_FILE") ]]; then
+            echo "::error:: No changes to ${INIT_FILE} occurred"
+            exit 0
+          else
+            echo "::info:: pushing update commit"
+              git commit -am 'protobuf: updating generated files'
+            exit 0
+          fi
+
