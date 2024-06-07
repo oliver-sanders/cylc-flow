@@ -39,6 +39,7 @@ jobs:
         run: |
           # generate .py and .pyi files from the .proto files
           eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+          . ~/.bash_profile
           micromamba activate protobuf
           cd proto
           buf generate
