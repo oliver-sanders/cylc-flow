@@ -1,0 +1,26 @@
+name: protobuf
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  protobuf:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install
+        run: |
+          brew install bufbuild/buf/buf
+
+      - name: Lint
+        run: |
+          buf lint cylc/flow/data_messages.proto
+
+      - name: Build
+        run: |
+          buf build cylc/flow/data_messages.proto
