@@ -49,8 +49,8 @@ jobs:
               ret=$?; \
               if [[ $ret == 100 ]]; then exit 0; \
               elif [[ $ret != 0 ]]; then echo '::error:: Breaking changes detected, create a new version of the protobuf schema if this is desired and increment the Cylc API number to match'; \
-            fi )
-          if
+              fi \
+            )
 
       - name: Build
         shell: bash -el {0}
