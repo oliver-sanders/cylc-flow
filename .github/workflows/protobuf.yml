@@ -48,7 +48,7 @@ jobs:
 
       - name: Commit & Push
         run: |
-          if [[ -z $(git diff --stat -- "$INIT_FILE") ]]; then
+          if [[ -z $(git diff --stat) ]]; then
             echo "::error:: No changes to ${INIT_FILE} occurred"
             exit 0
           else
