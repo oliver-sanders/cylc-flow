@@ -17,6 +17,9 @@ jobs:
           # we need all of the commits on the PR branch in order to be able to add new ones
           fetch-depth: 100
 
+      - name: Configure git
+        uses: cylc/release-actions/configure-git@v1
+
       # ----------------
 
       - name: Debug
@@ -80,9 +83,6 @@ jobs:
           micromamba activate protobuf
           cd cylc/flow/network/protobuf
           buf generate
-
-      - name: Configure git
-        uses: cylc/release-actions/configure-git@v1
 
       - name: Commit & Push
         run: |
