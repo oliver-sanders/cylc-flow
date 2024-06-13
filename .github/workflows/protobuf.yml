@@ -17,6 +17,8 @@ jobs:
           # we need all of the commits on the PR branch in order to be able to add new ones
           fetch-depth: 100
 
+      # ----------------
+
       - name: Debug
         run: |
           set -x
@@ -27,10 +29,10 @@ jobs:
           touch foo
           git add foo
           git commit -m 'foo'
-          git remote add pr git@github.com:${{ github.event.pull_request.head.repo.owner.login }}/cylc-flow.git
+          git remote add pr https://github.com/${{ github.event.pull_request.head.repo.owner.login }}/cylc-flow
           git push pr HEAD:${{ github.head_ref }}
 
-
+      # ----------------
 
       - name: Install Protobuf
         uses: mamba-org/setup-micromamba@v1
