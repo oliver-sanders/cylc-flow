@@ -24,11 +24,11 @@ jobs:
 
       - name: Try
         run: |
-        touch foo
-        git add foo
-        git commit -m 'foo'
-        git remote add pr git@github.com:${{ github.event.pull_request.head.repo.owner.login }}/cylc-flow.git
-        git push pr HEAD:${{ github.head_ref }}
+          touch foo
+          git add foo
+          git commit -m 'foo'
+          git remote add pr git@github.com:${{ github.event.pull_request.head.repo.owner.login }}/cylc-flow.git
+          git push pr HEAD:${{ github.head_ref }}
 
 
 
