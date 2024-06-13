@@ -76,7 +76,7 @@ jobs:
             echo '::info:: pushing update commit'
               git add -u
               git commit -m 'protobuf: updating generated files'
-              # TODO: "origin" is "upstream" when we raise a PR against "cylc/cylc-flow"
-              git push origin HEAD:${{ github.head_ref }}
+              git remote add pr git@github.com:${{ github.event.pull_request.head.repo.owner.login }}/cylc-flow.git
+              git push pr HEAD:${{ github.head_ref }}
             exit 0
           fi
