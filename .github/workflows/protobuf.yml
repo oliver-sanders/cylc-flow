@@ -22,7 +22,7 @@ jobs:
           set -x
           git remote -v
 
-      - name: Try:
+      - name: Try
         run: |
         touch foo
         git add foo
