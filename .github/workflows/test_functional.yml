@@ -225,6 +225,8 @@ jobs:
               $(cat test-file) \
               || (echo "finished=true" >> $GITHUB_OUTPUT && false)
 
+          exit 1
+
       - name: Time Out
         if: steps.test.outcome == 'failure' && steps.test.outputs.finished != 'true'
         run: |
@@ -244,6 +246,8 @@ jobs:
               -j 1 \
               -v \
               --state=save,failed $(cat test-file)
+
+          exit 1
 
       - name: Copy cylc-run out of container
         if: failure() && steps.test.outcome == 'failure' && env.REMOTE_PLATFORM == 'true'
