@@ -30,6 +30,7 @@ from pytest import param
 from json import loads
 
 from cylc.flow import CYLC_LOG
+from cylc.flow import commands
 from cylc.flow.cycling.integer import IntegerPoint
 from cylc.flow.cycling.iso8601 import ISO8601Point
 from cylc.flow.data_store_mgr import TASK_PROXIES
@@ -568,7 +569,7 @@ async def test_reload_stopcp(
     schd: 'Scheduler' = scheduler(flow(cfg))
     async with start(schd):
         assert str(schd.pool.stop_point) == '2020'
-        await schd.command_reload_workflow()
+        await commands.run_cmd(commands.reload_workflow, schd)
         assert str(schd.pool.stop_point) == '2020'
 
 
@@ -839,7 +840,7 @@ async def test_reload_prereqs(
         flow(conf, id_=id_)
 
         # Reload the workflow config
-        await schd.command_reload_workflow()
+        await commands.run_cmd(commands.reload_workflow, schd)
         assert list_tasks(schd) == expected_3
 
         # Check resulting dependencies of task z
@@ -970,7 +971,7 @@ async def test_graph_change_prereq_satisfaction(
             flow(conf, id_=id_)
 
             # Reload the workflow config
-            await schd.command_reload_workflow()
+            await commands.run_cmd(commands.reload_workflow, schd)
 
             await test.asend(schd)
 
@@ -1749,6 +1750,26 @@ async def test_compute_runahead(
         assert int(str(schd.pool.runahead_limit_point)) == 5  # +1
 
 
+async def test_compute_runahead_with_no_tasks(flow, scheduler, run):
+    """It should handle the case of an empty workflow.
+
+    See https://github.com/cylc/cylc-flow/issues/6225
+    """
+    id_ = flow(
+        {
+            'scheduling': {
+                'initial cycle point': '2000',
+                'graph': {'R1': 'foo'},
+            },
+        }
+    )
+    schd = scheduler(id_, startcp='2002', paused_start=False)
+    async with run(schd):
+        assert schd.pool.compute_runahead() is False
+        assert schd.pool.runahead_limit_point is None
+        assert schd.pool.get_tasks() == []
+
+
 @pytest.mark.parametrize('rhlimit', ['P2D', 'P2'])
 @pytest.mark.parametrize('compat_mode', ['compat-mode', 'normal-mode'])
 async def test_runahead_future_trigger(
@@ -1892,7 +1913,7 @@ async def test_fast_respawn(
     # attempt to spawn it again
     itask = task_pool.spawn_task("foo", IntegerPoint("1"), {1})
     assert itask is None
-    assert "Not spawning 1/foo - task removed" in caplog.text
+    assert "Not respawning 1/foo - task was removed" in caplog.text
 
 
 async def test_remove_active_task(
@@ -1967,7 +1988,7 @@ async def test_remove_by_suicide(
         )
 
         # remove 1/b by request (cylc remove)
-        schd.command_remove_tasks(['1/b'])
+        await commands.run_cmd(commands.remove_tasks, schd, ['1/b'])
         assert log_filter(
             log,
             regex='1/b.*removed from active task pool: request',
@@ -2009,7 +2030,7 @@ async def test_remove_no_respawn(flow, scheduler, start, log_filter):
         assert z1, '1/z should have been spawned after 1/a succeeded'
 
         # manually remove 1/z, it should be removed from the pool
-        schd.command_remove_tasks(['1/z'])
+        await commands.run_cmd(commands.remove_tasks, schd, ['1/z'])
         schd.workflow_db_mgr.process_queued_ops()
         z1 = schd.pool.get_task(IntegerPoint("1"), "z")
         assert z1 is None, '1/z should have been removed (by request)'
@@ -2018,9 +2039,73 @@ async def test_remove_no_respawn(flow, scheduler, start, log_filter):
         # respawned as a result
         schd.pool.spawn_on_output(b1, TASK_OUTPUT_SUCCEEDED)
         assert log_filter(
-            log, contains='Not spawning 1/z - task removed'
+            log, contains='Not respawning 1/z - task was removed'
         )
         z1 = schd.pool.get_task(IntegerPoint("1"), "z")
         assert (
             z1 is None
         ), '1/z should have stayed removed (but has been added back into the pool'
+
+
+async def test_set_future_flow(flow, scheduler, start, log_filter):
+    """Manually-set outputs for new flow num must be recorded in the DB.
+
+    See https://github.com/cylc/cylc-flow/pull/6186
+
+    To trigger the bug, the flow must be new but the task must have been
+    spawned before in an earlier flow.
+
+    """
+    # Scenario: after flow 1, set c1:succeeded in a future flow so
+    # when b succeeds in the new flow it will spawn c2 but not c1.
+    id_ = flow({
+        'scheduler': {
+            'allow implicit tasks': True
+        },
+        'scheduling': {
+            'cycling mode': 'integer',
+            'graph': {
+                'R1': 'b => c1 & c2',
+            },
+        },
+    })
+    schd: 'Scheduler' = scheduler(id_)
+    async with start(schd, level=logging.DEBUG) as log:
+
+        assert schd.pool.get_task(IntegerPoint("1"), "b") is not None, '1/b should be spawned on startup'
+
+        # set b, c1, c2 succeeded in flow 1
+        schd.pool.set_prereqs_and_outputs(['1/b', '1/c1', '1/c2'], prereqs=[], outputs=[], flow=[1])
+        schd.workflow_db_mgr.process_queued_ops()
+
+        # set task c1:succeeded in flow 2
+        schd.pool.set_prereqs_and_outputs(['1/c1'], prereqs=[], outputs=[], flow=[2])
+        schd.workflow_db_mgr.process_queued_ops()
+
+        # set b:succeeded in flow 2 and check downstream spawning
+        schd.pool.set_prereqs_and_outputs(['1/b'], prereqs=[], outputs=[], flow=[2])
+        assert schd.pool.get_task(IntegerPoint("1"), "c1") is None, '1/c1 (flow 2) should not be spawned after 1/b:succeeded'
+        assert schd.pool.get_task(IntegerPoint("1"), "c2") is not None, '1/c2 (flow 2) should be spawned after 1/b:succeeded' 
+
+
+async def test_trigger_queue(one, run, db_select, complete):
+    """It should handle triggering tasks in the queued state.
+
+    Triggering a queued task with a new flow number should result in the
+    task running with merged flow numbers.
+
+    See https://github.com/cylc/cylc-flow/pull/6241
+    """
+    async with run(one):
+        # the workflow should start up with one task in the original flow
+        task = one.pool.get_tasks()[0]
+        assert task.state(TASK_STATUS_WAITING, is_queued=True)
+        assert task.flow_nums == {1}
+
+        # trigger this task even though is already queued in flow 1
+        one.pool.force_trigger_tasks([task.identity], '2')
+
+        # the merged flow should continue
+        one.resume_workflow()
+        await complete(one, timeout=2)
+        assert db_select(one, False, 'task_outputs', 'flow_nums') == [('[1, 2]',), ('[1]',)]

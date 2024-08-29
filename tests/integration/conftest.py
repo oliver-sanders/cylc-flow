@@ -33,7 +33,7 @@ from cylc.flow.scripts.install import (
     install as cylc_install,
     get_option_parser as install_gop
 )
-from cylc.flow.util import serialise
+from cylc.flow.util import serialise_set
 from cylc.flow.wallclock import get_current_time_string
 from cylc.flow.workflow_files import infer_latest_run_from_id
 from cylc.flow.workflow_status import StopMode
@@ -545,7 +545,7 @@ def reflog():
                 deps = tuple(sorted(itask.state.get_resolved_dependencies()))
                 if flow_nums:
                     triggers.add(
-                        (itask.identity, serialise(itask.flow_nums), deps or None)
+                        (itask.identity, serialise_set(itask.flow_nums), deps or None)
                     )
                 else:
                     triggers.add((itask.identity, deps or None))
@@ -558,14 +558,18 @@ def reflog():
     return _reflog
 
 
-@pytest.fixture
-def complete():
+async def _complete(
+    schd: 'Scheduler',
+    *wait_tokens: Union[Tokens, str],
+    stop_mode=StopMode.AUTO,
+    timeout: int = 60,
+) -> None:
     """Wait for the workflow, or tasks within it to complete.
 
     Args:
         schd:
             The scheduler to await.
-        tokens_list:
+        wait_tokens:
             If specified, this will wait for the tasks represented by these
             tokens to be marked as completed by the task pool. Can use
             relative task ids as strings (e.g. '1/a') rather than tokens for
@@ -584,65 +588,70 @@ def complete():
             async_timeout (handles shutdown logic more cleanly).
 
     """
-    async def _complete(
-        schd,
-        *tokens_list: Union[Tokens, str],
-        stop_mode=StopMode.AUTO,
-        timeout: int = 60,
-    ) -> None:
-        start_time = time()
+    start_time = time()
 
-        _tokens_list: List[Tokens] = []
-        for tokens in tokens_list:
-            if isinstance(tokens, str):
-                tokens = Tokens(tokens, relative=True)
-            _tokens_list.append(tokens.task)
+    tokens_list: List[Tokens] = []
+    for tokens in wait_tokens:
+        if isinstance(tokens, str):
+            tokens = Tokens(tokens, relative=True)
+        tokens_list.append(tokens.task)
 
-        # capture task completion
-        remove_if_complete = schd.pool.remove_if_complete
+    # capture task completion
+    remove_if_complete = schd.pool.remove_if_complete
 
-        def _remove_if_complete(itask, output=None):
-            nonlocal _tokens_list
-            ret = remove_if_complete(itask)
-            if ret and itask.tokens.task in _tokens_list:
-                _tokens_list.remove(itask.tokens.task)
-            return ret
+    def _remove_if_complete(itask, output=None):
+        nonlocal tokens_list
+        ret = remove_if_complete(itask)
+        if ret and itask.tokens.task in tokens_list:
+            tokens_list.remove(itask.tokens.task)
+        return ret
 
-        schd.pool.remove_if_complete = _remove_if_complete
+    # capture workflow shutdown request
+    set_stop = schd._set_stop
+    stop_requested = False
 
-        # capture workflow shutdown
-        set_stop = schd._set_stop
-        has_shutdown = False
-
-        def _set_stop(mode=None):
-            nonlocal has_shutdown, stop_mode
-            if mode == stop_mode:
-                has_shutdown = True
-                return set_stop(mode)
-            else:
-                set_stop(mode)
-                raise Exception(f'Workflow bailed with stop mode = {mode}')
-
-        schd._set_stop = _set_stop
-
-        # determine the completion condition
-        if _tokens_list:
-            condition = lambda: bool(_tokens_list)
+    def _set_stop(mode=None):
+        nonlocal stop_requested, stop_mode
+        if mode == stop_mode:
+            stop_requested = True
+            return set_stop(mode)
         else:
-            condition = lambda: bool(not has_shutdown)
+            set_stop(mode)
+            raise Exception(f'Workflow bailed with stop mode = {mode}')
+
+    # determine the completion condition
+    def done():
+        if wait_tokens:
+            return not tokens_list
+        # otherwise wait for the scheduler to shut down
+        if not schd.contact_data:
+            return True
+        return stop_requested
+
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(schd.pool, 'remove_if_complete', _remove_if_complete)
+        mp.setattr(schd, '_set_stop', _set_stop)
 
         # wait for the condition to be met
-        while condition():
+        while not done():
             # allow the main loop to advance
             await asyncio.sleep(0)
             if (time() - start_time) > timeout:
-                raise Exception(
-                    f'Timeout waiting for {", ".join(map(str, _tokens_list))}'
-                )
+                msg = "Timeout waiting for "
+                if wait_tokens:
+                    msg += ", ".join(map(str, tokens_list))
+                else:
+                    msg += "workflow to shut down"
+                raise Exception(msg)
 
-        # restore regular shutdown logic
-        schd._set_stop = set_stop
 
+@pytest.fixture
+def complete():
+    return _complete
+
+
+@pytest.fixture(scope='module')
+def mod_complete():
     return _complete
 
 

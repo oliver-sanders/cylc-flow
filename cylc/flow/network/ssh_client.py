@@ -63,10 +63,11 @@ class WorkflowRuntimeClient(WorkflowRuntimeClientBase):
                 cmd, ssh_cmd, login_sh, cylc_path, msg = self.prepare_command(
                     command, args, timeout
                 )
-                platform = {
+                platform: dict = {
                     'ssh command': ssh_cmd,
                     'cylc path': cylc_path,
                     'use login shell': login_sh,
+                    'ssh forward environment variables': [],
                 }
                 # NOTE: this can not raise NoHostsError
                 # because we have provided the host

@@ -65,8 +65,8 @@ from cylc.flow.task_state import (
 )
 from cylc.flow.task_trigger import TaskTrigger
 from cylc.flow.util import (
-    serialise,
-    deserialise
+    serialise_set,
+    deserialise_set
 )
 from cylc.flow.wallclock import get_current_time_string
 from cylc.flow.platforms import get_platform
@@ -123,6 +123,7 @@ class TaskPool:
         self.task_events_mgr: 'TaskEventsManager' = task_events_mgr
         self.task_events_mgr.spawn_func = self.spawn_on_output
         self.xtrigger_mgr: 'XtriggerManager' = xtrigger_mgr
+        self.xtrigger_mgr.add_xtriggers(self.config.xtrigger_collator)
         self.data_store_mgr: 'DataStoreMgr' = data_store_mgr
         self.flow_mgr: 'FlowMgr' = flow_mgr
 
@@ -208,7 +209,7 @@ class TaskPool:
                 "time_created": now,
                 "time_updated": now,
                 "status": itask.state.status,
-                "flow_nums": serialise(itask.flow_nums),
+                "flow_nums": serialise_set(itask.flow_nums),
                 "flow_wait": itask.flow_wait,
                 "is_manual_submit": itask.is_manual_submit
             }
@@ -318,12 +319,15 @@ class TaskPool:
         if not self.active_tasks:
             # Find the earliest sequence point beyond the workflow start point.
             base_point = min(
-                point
-                for point in {
-                    seq.get_first_point(self.config.start_point)
-                    for seq in self.config.sequences
-                }
-                if point is not None
+                (
+                    point
+                    for point in {
+                        seq.get_first_point(self.config.start_point)
+                        for seq in self.config.sequences
+                    }
+                    if point is not None
+                ),
+                default=None,
             )
         else:
             # Find the earliest point with incomplete tasks.
@@ -433,7 +437,7 @@ class TaskPool:
         self,
         cycle: str,
         task: str,
-        output: str,
+        output_msg: str,
         flow_nums: 'FlowNums',
     ) -> Union[str, bool]:
         """Returns truthy if the specified output is satisfied in the DB."""
@@ -443,10 +447,20 @@ class TaskPool:
             # loop through matching tasks
             if flow_nums.intersection(task_flow_nums):
                 # this task is in the right flow
-                task_outputs = json.loads(task_outputs)
+                # BACK COMPAT: In Cylc >8.0.0,<8.3.0, only the task
+                #   messages were stored in the DB as a list.
+                # from: 8.0.0
+                # to: 8.3.0
+                outputs: Union[
+                    Dict[str, str], List[str]
+                ] = json.loads(task_outputs)
+                messages = (
+                    outputs.values() if isinstance(outputs, dict)
+                    else outputs
+                )
                 return (
                     'satisfied from database'
-                    if output in task_outputs
+                    if output_msg in messages
                     else False
                 )
         else:
@@ -475,7 +489,7 @@ class TaskPool:
                 self.tokens,
                 self.config.get_taskdef(name),
                 get_point(cycle),
-                deserialise(flow_nums),
+                deserialise_set(flow_nums),
                 status=status,
                 is_held=is_held,
                 submit_num=submit_num,
@@ -483,7 +497,7 @@ class TaskPool:
                 flow_wait=bool(flow_wait),
                 is_manual_submit=bool(is_manual_submit),
                 sequential_xtrigger_labels=(
-                    self.xtrigger_mgr.sequential_xtrigger_labels
+                    self.xtrigger_mgr.xtriggers.sequential_xtrigger_labels
                 ),
             )
 
@@ -538,14 +552,14 @@ class TaskPool:
 
             # Update prerequisite satisfaction status from DB
             sat = {}
-            for prereq_name, prereq_cycle, prereq_output, satisfied in (
+            for prereq_name, prereq_cycle, prereq_output_msg, satisfied in (
                     self.workflow_db_mgr.pri_dao.select_task_prerequisites(
                         cycle, name, flow_nums,
                     )
             ):
                 # Prereq satisfaction as recorded in the DB.
                 sat[
-                    (prereq_cycle, prereq_name, prereq_output)
+                    (prereq_cycle, prereq_name, prereq_output_msg)
                 ] = satisfied if satisfied != '0' else False
 
             for itask_prereq in itask.state.prerequisites:
@@ -557,12 +571,12 @@ class TaskPool:
                         # added to an already-spawned task before restart.
                         # Look through task outputs to see if is has been
                         # satisfied
-                        prereq_cycle, prereq_task, prereq_output = key
+                        prereq_cycle, prereq_task, prereq_output_msg = key
                         itask_prereq.satisfied[key] = (
                             self.check_task_output(
                                 prereq_cycle,
                                 prereq_task,
-                                prereq_output,
+                                prereq_output_msg,
                                 itask.flow_nums,
                             )
                         )
@@ -735,7 +749,8 @@ class TaskPool:
             if ntask is not None:
                 is_xtrig_sequential = ntask.is_xtrigger_sequential
             elif any(
-                xtrig_label in self.xtrigger_mgr.sequential_xtrigger_labels
+                xtrig_label in (
+                    self.xtrigger_mgr.xtriggers.sequential_xtrigger_labels)
                 for sequence, xtrig_labels in tdef.xtrig_labels.items()
                 for xtrig_label in xtrig_labels
                 if sequence.is_valid(point)
@@ -1025,7 +1040,7 @@ class TaskPool:
                     itask.flow_nums,
                     itask.state.status,
                     sequential_xtrigger_labels=(
-                        self.xtrigger_mgr.sequential_xtrigger_labels
+                        self.xtrigger_mgr.xtriggers.sequential_xtrigger_labels
                     ),
                 )
                 itask.copy_to_reload_successor(
@@ -1350,13 +1365,14 @@ class TaskPool:
             with suppress(KeyError):
                 children = itask.graph_children[output]
 
+        if itask.flow_wait and children:
+            LOG.warning(
+                f"[{itask}] not spawning on {output}: flow wait requested")
+            self.remove_if_complete(itask, output)
+            return
+
         suicide = []
         for c_name, c_point, is_abs in children:
-
-            if itask.flow_wait:
-                LOG.warning(
-                    f"[{itask}] not spawning on {output}: flow wait requested")
-                continue
 
             if is_abs:
                 self.abs_outputs_done.add(
@@ -1371,6 +1387,7 @@ class TaskPool:
             ).relative_id
 
             c_task = self._get_task_by_id(c_taskid)
+            in_pool = c_task is not None
 
             if c_task is not None and c_task != itask:
                 # (Avoid self-suicide: A => !A)
@@ -1395,10 +1412,12 @@ class TaskPool:
                         tasks.append(c_task)
                 else:
                     tasks = [c_task]
+
                 for t in tasks:
                     t.satisfy_me([itask.tokens.duplicate(task_sel=output)])
                     self.data_store_mgr.delta_task_prerequisite(t)
-                    self.add_to_pool(t)
+                    if not in_pool:
+                        self.add_to_pool(t)
 
                     if t.point <= self.runahead_limit_point:
                         self.rh_release_and_queue(t)
@@ -1565,8 +1584,8 @@ class TaskPool:
 
     def _get_task_history(
         self, name: str, point: 'PointBase', flow_nums: Set[int]
-    ) -> Tuple[bool, int, str, bool]:
-        """Get history of previous submits for this task.
+    ) -> Tuple[int, Optional[str], bool]:
+        """Get submit_num, status, flow_wait for point/name in flow_nums.
 
         Args:
             name: task name
@@ -1574,43 +1593,35 @@ class TaskPool:
             flow_nums: task flow numbers
 
         Returns:
-            never_spawned: if task never spawned before
-            submit_num: submit number of previous submit
-            prev_status: task status of previous sumbit
-            prev_flow_wait: if previous submit was a flow-wait task
+           (submit_num, status, flow_wait)
+           If no matching history, status will be None
 
         """
+        submit_num: int = 0
+        status: Optional[str] = None
+        flow_wait = False
+
         info = self.workflow_db_mgr.pri_dao.select_prev_instances(
             name, str(point)
         )
-        try:
-            submit_num: int = max(s[0] for s in info)
-        except ValueError:
-            # never spawned in any flow
-            submit_num = 0
-            never_spawned = True
-        else:
-            never_spawned = False
-            # (submit_num could still be zero, if removed before submit)
+        with suppress(ValueError):
+            submit_num = max(s[0] for s in info)
 
-        prev_status: str = TASK_STATUS_WAITING
-        prev_flow_wait = False
-
-        for _snum, f_wait, old_fnums, status in info:
+        for _snum, f_wait, old_fnums, old_status in info:
             if set.intersection(flow_nums, old_fnums):
                 # matching flows
-                prev_status = status
-                prev_flow_wait = f_wait
-                if prev_status in TASK_STATUSES_FINAL:
+                status = old_status
+                flow_wait = f_wait
+                if status in TASK_STATUSES_FINAL:
                     # task finished
                     break
                 # Else continue: there may be multiple entries with flow
                 # overlap due to merges (they'll have have same snum and
                 # f_wait); keep going to find the finished one, if any.
 
-        return never_spawned, submit_num, prev_status, prev_flow_wait
+        return submit_num, status, flow_wait
 
-    def _load_historical_outputs(self, itask):
+    def _load_historical_outputs(self, itask: 'TaskProxy') -> None:
         """Load a task's historical outputs from the DB."""
         info = self.workflow_db_mgr.pri_dao.select_task_outputs(
             itask.tdef.name, str(itask.point))
@@ -1618,10 +1629,30 @@ class TaskPool:
             # task never ran before
             self.db_add_new_flow_rows(itask)
         else:
+            flow_seen = False
             for outputs_str, fnums in info.items():
                 if itask.flow_nums.intersection(fnums):
-                    for msg in json.loads(outputs_str):
-                        itask.state.outputs.set_message_complete(msg)
+                    # DB row has overlap with itask's flows
+                    flow_seen = True
+                    # BACK COMPAT: In Cylc >8.0.0,<8.3.0, only the task
+                    #   messages were stored in the DB as a list.
+                    # from: 8.0.0
+                    # to: 8.3.0
+                    outputs: Union[
+                        Dict[str, str], List[str]
+                    ] = json.loads(outputs_str)
+                    if isinstance(outputs, dict):
+                        # {trigger: message} - match triggers, not messages.
+                        # DB may record forced completion rather than message.
+                        for trigger in outputs.keys():
+                            itask.state.outputs.set_trigger_complete(trigger)
+                    else:
+                        # [message] - always the full task message
+                        for msg in outputs:
+                            itask.state.outputs.set_message_complete(msg)
+            if not flow_seen:
+                # itask never ran before in its assigned flows
+                self.db_add_new_flow_rows(itask)
 
     def spawn_task(
         self,
@@ -1631,42 +1662,50 @@ class TaskPool:
         force: bool = False,
         flow_wait: bool = False,
     ) -> Optional[TaskProxy]:
-        """Return task proxy if not completed in this flow, or if forced.
+        """Return a new task proxy for the given flow if possible.
 
-        If finished previously with flow wait, just try to spawn children.
+        We need to hit the DB for:
+        - submit number
+        - task status
+        - flow-wait
+        - completed outputs (e.g. via "cylc set")
 
-        Note finished tasks may be incomplete, but we don't automatically
-        re-run incomplete tasks in the same flow.
+        If history records a final task status (for this flow):
+        - if not flow wait, don't spawn (return None)
+        - if flow wait, don't spawn (return None) but do spawn children
+        - if outputs are incomplete, don't auto-rerun it (return None)
 
-        For every task spawned, we need a DB lookup for submit number,
-        and flow-wait.
+        Otherwise, spawn the task and load any completed outputs.
 
         """
-        if not self.can_be_spawned(name, point):
-            return None
-
-        never_spawned, submit_num, prev_status, prev_flow_wait = (
+        submit_num, prev_status, prev_flow_wait = (
             self._get_task_history(name, point, flow_nums)
         )
 
-        if (
-            not never_spawned and
-            not prev_flow_wait and
-            submit_num == 0
-        ):
-            # Previous instance removed before completing any outputs.
-            LOG.debug(f"Not spawning {point}/{name} - task removed")
-            return None
-
+        # Create the task proxy with any completed outputs loaded.
         itask = self._get_task_proxy_db_outputs(
             point,
             self.config.get_taskdef(name),
             flow_nums,
-            status=prev_status,
+            status=prev_status or TASK_STATUS_WAITING,
             submit_num=submit_num,
             flow_wait=flow_wait,
         )
         if itask is None:
+            return None
+
+        if (
+            prev_status is not None
+            and not itask.state.outputs.get_completed_outputs()
+        ):
+            # If itask has any history in this flow but no completed outputs
+            # we can infer it was deliberately removed, so don't respawn it.
+            # TODO (follow-up work):
+            # - this logic fails if task removed after some outputs completed
+            # - this is does not conform to future "cylc remove" flow-erasure
+            #   behaviour which would result in respawning of the removed task
+            # See github.com/cylc/cylc-flow/pull/6186/#discussion_r1669727292
+            LOG.debug(f"Not respawning {point}/{name} - task was removed")
             return None
 
         if prev_status in TASK_STATUSES_FINAL:
@@ -1762,22 +1801,14 @@ class TaskPool:
             transient=transient,
             is_manual_submit=is_manual_submit,
             sequential_xtrigger_labels=(
-                self.xtrigger_mgr.sequential_xtrigger_labels
+                self.xtrigger_mgr.xtriggers.sequential_xtrigger_labels
             ),
         )
         if itask is None:
             return None
 
         # Update it with outputs that were already completed.
-        info = self.workflow_db_mgr.pri_dao.select_task_outputs(
-            itask.tdef.name, str(itask.point))
-        if not info:
-            # (Note still need this if task not run before)
-            self.db_add_new_flow_rows(itask)
-        for outputs_str, fnums in info.items():
-            if flow_nums.intersection(fnums):
-                for msg in json.loads(outputs_str):
-                    itask.state.outputs.set_message_complete(msg)
+        self._load_historical_outputs(itask)
         return itask
 
     def _standardise_prereqs(
@@ -1858,7 +1889,6 @@ class TaskPool:
         - globs (cycle and name) only match in the pool
         - future tasks must be specified individually
         - family names are not expanded to members
-
 
         Uses a transient task proxy to spawn children. (Even if parent was
         previously spawned in this flow its children might not have been).
@@ -1944,6 +1974,7 @@ class TaskPool:
         self.data_store_mgr.delta_task_outputs(itask)
         self.workflow_db_mgr.put_update_task_state(itask)
         self.workflow_db_mgr.put_update_task_outputs(itask)
+        self.workflow_db_mgr.process_queued_ops()
 
     def _set_prereqs_itask(
         self,
@@ -2141,6 +2172,7 @@ class TaskPool:
             if itask.state(TASK_STATUS_PREPARING, *TASK_STATUSES_ACTIVE):
                 LOG.warning(f"[{itask}] ignoring trigger - already active")
                 continue
+            self.merge_flows(itask, flow_nums)
             self._force_trigger(itask)
 
         # Spawn and trigger future tasks.
@@ -2149,10 +2181,9 @@ class TaskPool:
             if not self.can_be_spawned(name, point):
                 continue
 
-            _, submit_num, _prev_status, prev_fwait = (
+            submit_num, _, prev_fwait = (
                 self._get_task_history(name, point, flow_nums)
             )
-
             itask = TaskProxy(
                 self.tokens,
                 self.config.get_taskdef(name),
@@ -2161,7 +2192,7 @@ class TaskPool:
                 flow_wait=flow_wait,
                 submit_num=submit_num,
                 sequential_xtrigger_labels=(
-                    self.xtrigger_mgr.sequential_xtrigger_labels
+                    self.xtrigger_mgr.xtriggers.sequential_xtrigger_labels
                 ),
             )
             if itask is None:
@@ -2444,7 +2475,7 @@ class TaskPool:
         if not flow_nums or (flow_nums == itask.flow_nums):
             # Don't do anything if:
             # 1. merging from a no-flow task, or
-            # 2. trying to spawn the same task in the same flow. This arises
+            # 2. same flow (no merge needed); can arise
             # downstream of an AND trigger (if "A & B => C"
             # and A spawns C first, B will find C is already in the pool),
             # and via suicide triggers ("A =>!A": A tries to spawn itself).
@@ -2453,6 +2484,8 @@ class TaskPool:
         merge_with_no_flow = not itask.flow_nums
 
         itask.merge_flows(flow_nums)
+        self.data_store_mgr.delta_task_flow_nums(itask)
+
         # Merged tasks get a new row in the db task_states table.
         self.db_add_new_flow_rows(itask)
 

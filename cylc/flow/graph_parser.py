@@ -380,11 +380,10 @@ class GraphParser:
             full_line = self.__class__.REC_WORKFLOW_STATE.sub(repl, full_line)
             for item in repl.match_groups:
                 l_task, r_all, r_workflow, r_task, r_status = item
-                if r_status:
-                    r_status = r_status.strip(self.__class__.QUALIFIER)
-                    r_status = TaskTrigger.standardise_name(r_status)
-                else:
-                    r_status = TASK_OUTPUT_SUCCEEDED
+                if r_status is not None:
+                    r_status = TaskTrigger.standardise_name(
+                        r_status.strip(self.__class__.QUALIFIER)
+                    )
                 self.workflow_state_polling_tasks[l_task] = (
                     r_workflow, r_task, r_status, r_all
                 )
@@ -644,7 +643,7 @@ class GraphParser:
                     # Not a family.
                     if trig in self.__class__.fam_to_mem_trigger_map:
                         raise GraphParseError(
-                            "family trigger on non-family namespace {expr}")
+                            f"family trigger on non-family namespace {expr}")
 
             # remove '?' from expr (not needed in logical trigger evaluation)
             expr = re.sub(self.__class__._RE_OPT, '', expr)

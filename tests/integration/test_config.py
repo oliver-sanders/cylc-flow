@@ -14,12 +14,16 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import logging
 from pathlib import Path
 import sqlite3
 from typing import Any
 import pytest
 
+from cylc.flow.cfgspec.glbl_cfg import glbl_cfg
+from cylc.flow.cfgspec.globalcfg import GlobalConfig
 from cylc.flow.exceptions import (
+    PointParsingError,
     ServiceFileError,
     WorkflowConfigError,
     XtriggerConfigError,
@@ -357,7 +361,7 @@ def test_xtrig_validation_wall_clock(
         }
     })
     with pytest.raises(WorkflowConfigError, match=(
-        r'\[@myxt\] wall_clock\(offset=PT7MH\) validation failed: '
+        r'\[@myxt\] wall_clock\(offset=PT7MH\)\n'
         r'Invalid offset: PT7MH'
     )):
         validate(id_)
@@ -392,7 +396,7 @@ def test_xtrig_validation_echo(
     })
     with pytest.raises(
         WorkflowConfigError,
-        match=r'echo.* Requires \'succeed=True/False\' arg'
+        match=r'Requires \'succeed=True/False\' arg'
     ):
         validate(id_)
 
@@ -461,12 +465,12 @@ def test_xtrig_validation_custom(
 @pytest.mark.parametrize('xtrig_call, expected_msg', [
     pytest.param(
         'xrandom()',
-        r"xrandom.* missing a required argument: 'percent'",
+        r"missing a required argument: 'percent'",
         id="missing-arg"
     ),
     pytest.param(
         'wall_clock(alan_grant=1)',
-        r"wall_clock.* unexpected keyword argument 'alan_grant'",
+        r"unexpected keyword argument 'alan_grant'",
         id="unexpected-arg"
     ),
 ])
@@ -503,3 +507,114 @@ def test_special_task_non_word_names(flow: Fixture, validate: Fixture):
         },
     })
     validate(wid)
+
+
+async def test_glbl_cfg(monkeypatch, tmp_path, caplog):
+    """Test accessing the global config via the glbl_cfg wrapper.
+
+    Test the "cached" and "reload" kwargs to glbl_cfg.
+
+    Also assert that accessing the global config during a reload operation does
+    not cause issues. See https://github.com/cylc/cylc-flow/issues/6244
+    """
+    # wipe any previously cached config
+    monkeypatch.setattr(
+        'cylc.flow.cfgspec.globalcfg.GlobalConfig._DEFAULT', None
+    )
+    # load the global config from the test tmp directory
+    monkeypatch.setenv('CYLC_CONF_PATH', str(tmp_path))
+
+    def write_global_config(cfg_str):
+        """Write the global.cylc file."""
+        Path(tmp_path, 'global.cylc').write_text(cfg_str)
+
+    def get_platforms(cfg_obj):
+        """Return the platforms defined in the provided config instance."""
+        return set(cfg_obj.get(['platforms']).keys())
+
+    def expect_platforms_during_reload(platforms):
+        """Test the platforms defined in glbl_cfg() during reload.
+
+        Assert that the platforms defined in glbl_cfg() match the expected
+        value, whilst the global config is in the process of being reloaded.
+
+        In other words, this tests that the cached instance is not changed
+        until after the reload has completed.
+
+        See https://github.com/cylc/cylc-flow/issues/6244
+        """
+        caplog.set_level(logging.INFO)
+
+        def _capture(fcn):
+            def _inner(*args, **kwargs):
+                cfg = glbl_cfg()
+                assert get_platforms(cfg) == platforms
+                logging.getLogger('test').info(
+                    'ran expect_platforms_during_reload test'
+                )
+                return fcn(*args, **kwargs)
+            return _inner
+
+        monkeypatch.setattr(
+            'cylc.flow.cfgspec.globalcfg.GlobalConfig._load',
+            _capture(GlobalConfig._load)
+        )
+
+    # write a global config
+    write_global_config('''
+        [platforms]
+            [[foo]]
+    ''')
+
+    # test the platforms defined in it
+    assert get_platforms(glbl_cfg()) == {'localhost', 'foo'}
+
+    # add a new platform the config
+    write_global_config('''
+        [platforms]
+            [[foo]]
+            [[bar]]
+    ''')
+
+    # the new platform should not appear (due to the cached instance)
+    assert get_platforms(glbl_cfg()) == {'localhost', 'foo'}
+
+    # if we request an uncached instance, the new platform should appear
+    assert get_platforms(glbl_cfg(cached=False)) == {'localhost', 'foo', 'bar'}
+
+    # however, this should not affect the cached instance
+    assert get_platforms(glbl_cfg()) == {'localhost', 'foo'}
+
+    # * if we reload the cached instance, the new platform should appear
+    # * but during the reload itself, the old config should persist
+    #   see https://github.com/cylc/cylc-flow/issues/6244
+    expect_platforms_during_reload({'localhost', 'foo'})
+    assert get_platforms(glbl_cfg(reload=True)) == {'localhost', 'foo', 'bar'}
+    assert 'ran expect_platforms_during_reload test' in caplog.messages
+
+    # the cache should have been updated by the reload
+    assert get_platforms(glbl_cfg()) == {'localhost', 'foo', 'bar'}
+
+
+def test_validate_run_mode(flow: Fixture, validate: Fixture):
+    """Test that Cylc validate will only check simulation mode settings
+    if validate --mode simulation or dummy.
+
+    Discovered in:
+    https://github.com/cylc/cylc-flow/pull/6213#issuecomment-2225365825
+    """
+    wid = flow({
+        'scheduling': {'graph': {'R1': 'mytask'}},
+        'runtime': {'mytask': {'simulation': {'fail cycle points': 'alll'}}}
+    })
+
+    # It's fine with run mode live
+    validate(wid)
+
+    # It fails with run mode simulation:
+    with pytest.raises(PointParsingError, match='Incompatible value'):
+        validate(wid, run_mode='simulation')
+
+    # It fails with run mode dummy:
+    with pytest.raises(PointParsingError, match='Incompatible value'):
+        validate(wid, run_mode='dummy')
