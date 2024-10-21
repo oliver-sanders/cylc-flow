@@ -230,7 +230,8 @@ class Updater():
         # do a workflow scan if it's due
         update_start_time = time()
         if update_start_time - last_scan_time > self.BASE_SCAN_INTERVAL:
-            data = await self._scan()
+            with suppress(Exception):
+                data = await self._scan()
 
         # get the next snapshot from workflows we are subscribed to
         update = await self._run_update(data)
