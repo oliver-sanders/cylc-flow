@@ -27,6 +27,8 @@ from cylc.flow.task_state import (
     TASK_STATUS_SUCCEEDED
 )
 
+DUMMY_VAL = 0
+
 TUI = """
                            _,@@@@@@.
                          <=@@@, `@@@@@.
