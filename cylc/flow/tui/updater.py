@@ -184,10 +184,11 @@ class Updater():
         with suppress_logging():
             self._update_filters(filters)
             while True:
-                ret = await self._update()
-                if ret == self.SIGNAL_TERMINATE:
-                    break
-                self.update_queue.put(ret)
+                with suppress(Exception):
+                    ret = await self._update()
+                    if ret == self.SIGNAL_TERMINATE:
+                        break
+                    self.update_queue.put(ret)
 
     def _subscribe(self, w_id):
         if w_id not in self._clients:
@@ -230,7 +231,8 @@ class Updater():
         # do a workflow scan if it's due
         update_start_time = time()
         if update_start_time - last_scan_time > self.BASE_SCAN_INTERVAL:
-            data = await self._scan()
+            with suppress(Exception):
+                data = await self._scan()
 
         # get the next snapshot from workflows we are subscribed to
         update = await self._run_update(data)
