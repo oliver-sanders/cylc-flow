@@ -184,10 +184,11 @@ class Updater():
         with suppress_logging():
             self._update_filters(filters)
             while True:
-                ret = await self._update()
-                if ret == self.SIGNAL_TERMINATE:
-                    break
-                self.update_queue.put(ret)
+                with suppress(Exception):
+                    ret = await self._update()
+                    if ret == self.SIGNAL_TERMINATE:
+                        break
+                    self.update_queue.put(ret)
 
     def _subscribe(self, w_id):
         if w_id not in self._clients:
