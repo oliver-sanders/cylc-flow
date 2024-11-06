@@ -240,9 +240,7 @@ class CylcWorkflowDAO:
 
     TABLES_ATTRS = {
         TABLE_BROADCASTS: [
-            # ["id", {"datatype": "INTEGER", "is_primary_key": True}],
-            ["id", {"is_primary_key": True}],
-            ["time"],
+            ["time", {"is_primary_key": True}],
             ["cycle"],
             ["namespace"],
             ["settings"]
@@ -611,7 +609,7 @@ class CylcWorkflowDAO:
     def select_broadcasts_2(self, min_cycle=None, max_cycle=None, cycle=None, namespace=None, setting=None):
         stmt = rf'''
             SELECT
-                *
+                time, cycle, namespace, settings
             FROM
                 {self.TABLE_BROADCASTS}
         '''

@@ -22,7 +22,6 @@ from typing import (
     TYPE_CHECKING,
     Optional,
 )
-from uuid import uuid4
 
 from cylc.flow.parsec.util import (
     listjoin,
@@ -89,16 +88,15 @@ class BroadcastMgr:
         # * timestamp
         # * insertion order
         # but nicer.
-        id_ = str(uuid4())
         time = get_current_time_string(display_sub_seconds=True)
 
         if self._is_cycle_in_window(cycle):
             self.broadcasts.setdefault(cycle, {}).setdefault(namespace, {})[
-                id_
+                time
             ] = settings
 
         self.workflow_db_mgr.put_broadcast_2(
-            id_, time, cycle, namespace, serialise_settings(settings)
+            time, cycle, namespace, serialise_settings(settings)
         )
 
         # return modified_settings, bad_options
@@ -108,8 +106,8 @@ class BroadcastMgr:
     ):
         if not ids:
             ids = [
-                id_
-                for id_, *_
+                time
+                for time, *_
                 in self.workflow_db_mgr.pri_dao.select_broadcasts_2(
                     cycle=point_strings,
                     namespace=namespace,
@@ -131,7 +129,7 @@ class BroadcastMgr:
             for cycle, namespace in self._iter_broadcast_hierarchy(tokens['cycle'], tokens['task']):
                 broadcasts.extend([
                     deserialise_settings(settings)
-                    for _id, _time, _cycle, _namespace, settings
+                    for _time, _cycle, _namespace, settings
                     in self.workflow_db_mgr.pri_dao.select_broadcasts_2(
                         cycle=cycle,
                         namespace=namespace,
@@ -168,8 +166,7 @@ class BroadcastMgr:
     def reload_broadcasts(self):
         self.broadcasts = {}  # TODO
         for (
-            id_,
-            _time,
+            time,
             cycle,
             namespace,
             settings,
@@ -178,7 +175,7 @@ class BroadcastMgr:
             max_cycle=self._data_window[1],
         ):
             self.broadcasts.setdefault(cycle, {}).setdefault(namespace, {})[
-                id_
+                time
             ] = deserialise_settings(settings)
 
     def reload_config(self):

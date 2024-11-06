@@ -323,10 +323,9 @@ class WorkflowDatabaseManager:
                     "key": broadcast_change["key"],
                     "value": broadcast_change["value"]})
 
-    def put_broadcast_2(self, id_, time, cycle, namespace, settings):
-        print(f'put_broadcast_2({id_}, {time}, {cycle}, {namespace}, {settings})')
+    def put_broadcast_2(self, time, cycle, namespace, settings):
+        print(f'put_broadcast_2({time}, {cycle}, {namespace}, {settings})')
         self.db_inserts_map.setdefault(self.TABLE_BROADCASTS, []).append({
-            "id": id_,
             "time": time,
             "cycle": cycle,
             "namespace": namespace,
