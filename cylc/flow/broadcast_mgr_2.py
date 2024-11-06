@@ -20,17 +20,14 @@ import json
 from threading import RLock
 from typing import (
     TYPE_CHECKING,
-    Optional,
 )
 
 from cylc.flow.parsec.util import (
-    listjoin,
     pdeepcopy,
     poverride,
 )
 from cylc.flow.wallclock import (
     get_current_time_string,
-    get_utc_mode,
 )
 
 if TYPE_CHECKING:
@@ -68,7 +65,8 @@ class BroadcastMgr:
         # self.ext_triggers = {}  # Can use collections.Counter in future
         self.lock = RLock()
 
-        self._data_window = ('1000', '3000')
+        self._min_cycle = '1000'
+        self._max_cycle = '3000'
 
         self.reload_config()
 
@@ -161,7 +159,7 @@ class BroadcastMgr:
 
     def _is_cycle_in_window(self, cycle):
         cycle = str(cycle)
-        return cycle >= self._data_window[0] and cycle <= self._data_window[1]
+        return cycle >= self._min_cycle and cycle <= self._max_cycle
 
     def reload_broadcasts(self):
         self.broadcasts = {}  # TODO
@@ -171,8 +169,8 @@ class BroadcastMgr:
             namespace,
             settings,
         ) in self.workflow_db_mgr.pri_dao.select_broadcasts_2(
-            min_cycle=self._data_window[0],
-            max_cycle=self._data_window[1],
+            min_cycle=self._min_cycle,
+            max_cycle=self._max_cycle,
         ):
             self.broadcasts.setdefault(cycle, {}).setdefault(namespace, {})[
                 time
@@ -182,5 +180,6 @@ class BroadcastMgr:
         self.linearized_ancestors = self.config.get_linearized_ancestors()
 
     def set_window(self, min_cycle, max_cycle):
-        self._data_window = (min_cycle, max_cycle)
+        self._min_cycle = min_cycle
+        self._max_cycle = max_cycle
         self.reload_broadcasts()
