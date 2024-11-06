@@ -236,7 +236,17 @@ class CylcWorkflowDAO:
     TABLE_XTRIGGERS = "xtriggers"
     TABLE_ABS_OUTPUTS = "absolute_outputs"
 
+    TABLE_BROADCASTS = "broadcasts"
+
     TABLES_ATTRS = {
+        TABLE_BROADCASTS: [
+            # ["id", {"datatype": "INTEGER", "is_primary_key": True}],
+            ["id", {"is_primary_key": True}],
+            ["time"],
+            ["cycle"],
+            ["namespace"],
+            ["settings"]
+        ],
         TABLE_BROADCAST_EVENTS: [
             ["time"],
             ["change"],
@@ -597,6 +607,33 @@ class CylcWorkflowDAO:
         stmt = self.pre_select_broadcast_states(order=sort)
         for row_idx, row in enumerate(self.connect().execute(stmt)):
             callback(row_idx, list(row))
+
+    def select_broadcasts_2(self, min_cycle=None, max_cycle=None, cycle=None, namespace=None, setting=None):
+        stmt = rf'''
+            SELECT
+                *
+            FROM
+                {self.TABLE_BROADCASTS}
+        '''
+        wheres = []
+        where_args = []
+        if min_cycle and max_cycle:
+            wheres.append(r'cycle BETWEEN ? AND ?')
+            where_args.extend([min_cycle, max_cycle])
+        elif cycle:
+            wheres.append(r'cycle = ?')
+            where_args.append(cycle)
+        if namespace:
+            wheres.append(r'namespace = ?')
+            where_args.append(namespace)
+        # if setting:  TODO
+        #     wheres.append(r'setting = ?')
+        #     where_args.append(setting)
+
+        if wheres:
+            stmt += '\nWHERE ' + ' AND '.join(wheres)
+        
+        yield from self.connect().execute(stmt, where_args)
 
     def select_workflow_params(self) -> Iterable[Tuple[str, Optional[str]]]:
         """Select all from workflow_params.

@@ -116,6 +116,7 @@ class WorkflowDatabaseManager:
 
     TABLE_BROADCAST_EVENTS = CylcWorkflowDAO.TABLE_BROADCAST_EVENTS
     TABLE_BROADCAST_STATES = CylcWorkflowDAO.TABLE_BROADCAST_STATES
+    TABLE_BROADCASTS = CylcWorkflowDAO.TABLE_BROADCASTS
     TABLE_INHERITANCE = CylcWorkflowDAO.TABLE_INHERITANCE
     TABLE_WORKFLOW_PARAMS = CylcWorkflowDAO.TABLE_WORKFLOW_PARAMS
     TABLE_WORKFLOW_FLOWS = CylcWorkflowDAO.TABLE_WORKFLOW_FLOWS
@@ -321,6 +322,21 @@ class WorkflowDatabaseManager:
                     "namespace": broadcast_change["namespace"],
                     "key": broadcast_change["key"],
                     "value": broadcast_change["value"]})
+
+    def put_broadcast_2(self, id_, time, cycle, namespace, settings):
+        print(f'put_broadcast_2({id_}, {time}, {cycle}, {namespace}, {settings})')
+        self.db_inserts_map.setdefault(self.TABLE_BROADCASTS, []).append({
+            "id": id_,
+            "time": time,
+            "cycle": cycle,
+            "namespace": namespace,
+            "settings": str(settings),
+        })
+
+    def drop_broadcast_2(self, id_):
+        self.db_deletes_map.setdefault(self.TABLE_BROADCAST_STATES, []).append({
+            "id": id_,
+        })
 
     def put_runtime_inheritance(self, config):
         """Put task/family inheritance in runtime database."""
