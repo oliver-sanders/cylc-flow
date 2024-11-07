@@ -100,39 +100,80 @@ class BroadcastMgr:
         # return modified_settings, bad_options
 
     def clear_broadcast(
-        self, point_strings=None, namespace=None, cancel_settings=None, ids=None
+        self,
+        point_strings=None,
+        namespace=None,
+        cancel_settings=None,
+        events=None,
     ):
-        if not ids:
-            ids = [
-                time
-                for time, *_
-                in self.workflow_db_mgr.pri_dao.select_broadcasts_2(
-                    cycle=point_strings,
-                    namespace=namespace,
-                    settings=cancel_settings,
-                )
-            ]
+        if events:
+            # lookup events by ID (i.e. event time)
+            opts = {'events': events}
+        else:
+            # lookup events matching the provided cycle/namespace/settings
+            opts = {
+                'cycle': point_strings,
+                'namespace': namespace,
+                'settings': serialise_settings(cancel_settings)
+                if cancel_settings
+                else None,
+            }
 
-        pass  # TODO
-        # return modified_settings, bad_options
+        # get matching events
+        broadcasts = list(
+            self.workflow_db_mgr.pri_dao.select_broadcasts_2(**opts)
+        )
+
+        # extract event IDs from matches if not provided
+        events = events or [time for time, *_ in broadcasts]
+
+        # compute changes
+        ret: dict = {}
+        for _time, cycle, namespace, settings in broadcasts:
+            addict(ret, {cycle: {namespace: settings}})
+            pass
+
+        # remove events from the DB
+        self.workflow_db_mgr.drop_broadcast_2(events)
+
+        # remove events from memory (avoid refreshing as this requires an extra DB call)
+        for cycle, namespaces in tuple(self.broadcasts.items()):
+            for namespace, broadcasted_settings in tuple(namespaces.items()):
+                for time, settings in tuple(broadcasted_settings.items()):
+                    if time in events:
+                        broadcasted_settings.pop(time)
+                if not broadcasted_settings:
+                    # remove entry if no broadcasts are left
+                    namespaces.pop(namespace)
+            if not namespaces:
+                # remove entry if no broadcasts are left
+                self.broadcasts.pop(cycle)
+
+        bad_options = []
+        return ret, bad_options
 
     def get_broadcast(self, tokens: 'Tokens') -> dict:
         broadcasts = []
         if self._is_cycle_in_window(tokens['cycle']):
-            for cycle, namespace in self._iter_broadcast_hierarchy(tokens['cycle'], tokens['task']):
+            for cycle, namespace in self._iter_broadcast_hierarchy(
+                tokens['cycle'], tokens['task']
+            ):
                 settings = self.broadcasts.get(cycle, {}).get(namespace, {})
                 if settings:
                     broadcasts.extend([*settings.values()])  # TODO: order
         else:
-            for cycle, namespace in self._iter_broadcast_hierarchy(tokens['cycle'], tokens['task']):
-                broadcasts.extend([
-                    deserialise_settings(settings)
-                    for _time, _cycle, _namespace, settings
-                    in self.workflow_db_mgr.pri_dao.select_broadcasts_2(
-                        cycle=cycle,
-                        namespace=namespace,
-                    )
-                ])  # TODO: order
+            for cycle, namespace in self._iter_broadcast_hierarchy(
+                tokens['cycle'], tokens['task']
+            ):
+                broadcasts.extend(
+                    [
+                        deserialise_settings(settings)
+                        for _time, _cycle, _namespace, settings in self.workflow_db_mgr.pri_dao.select_broadcasts_2(
+                            cycle=cycle,
+                            namespace=namespace,
+                        )
+                    ]
+                )  # TODO: order
 
         ret: dict = {}
         for broadcast in broadcasts:

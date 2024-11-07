@@ -606,7 +606,7 @@ class CylcWorkflowDAO:
         for row_idx, row in enumerate(self.connect().execute(stmt)):
             callback(row_idx, list(row))
 
-    def select_broadcasts_2(self, min_cycle=None, max_cycle=None, cycle=None, namespace=None, setting=None):
+    def select_broadcasts_2(self, min_cycle=None, max_cycle=None, cycle=None, namespace=None, settings=None):
         stmt = rf'''
             SELECT
                 time, cycle, namespace, settings
@@ -624,9 +624,9 @@ class CylcWorkflowDAO:
         if namespace:
             wheres.append(r'namespace = ?')
             where_args.append(namespace)
-        # if setting:  TODO
-        #     wheres.append(r'setting = ?')
-        #     where_args.append(setting)
+        if settings:
+            wheres.append(r'settings = ?')
+            where_args.append(settings)
 
         if wheres:
             stmt += '\nWHERE ' + ' AND '.join(wheres)

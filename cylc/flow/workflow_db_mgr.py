@@ -332,10 +332,12 @@ class WorkflowDatabaseManager:
             "settings": str(settings),
         })
 
-    def drop_broadcast_2(self, id_):
-        self.db_deletes_map.setdefault(self.TABLE_BROADCAST_STATES, []).append({
-            "id": id_,
-        })
+    def drop_broadcast_2(self, events):
+        print(f'drop_broadcast_2({events})')
+        for time in events:
+            self.db_deletes_map.setdefault(self.TABLE_BROADCASTS, []).append({
+                "time": time,
+            })
 
     def put_runtime_inheritance(self, config):
         """Put task/family inheritance in runtime database."""
