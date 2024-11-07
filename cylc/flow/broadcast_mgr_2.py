@@ -55,10 +55,9 @@ class BroadcastMgr:
     data_store_mgr: 'DataStoreMgr'
     config: 'WorkflowConfig'
 
-    def __init__(self, workflow_db_mgr, data_store_mgr, config):
+    def __init__(self, workflow_db_mgr, data_store_mgr):
         self.workflow_db_mgr = workflow_db_mgr
         self.data_store_mgr = data_store_mgr
-        self.config = config
         self.broadcasts = {}
         self.lock = RLock()
 
@@ -67,6 +66,8 @@ class BroadcastMgr:
         self._min_cycle = '1000'
         self._max_cycle = '3000'
 
+    def set_config(self, config):
+        self.config = config
         self.reload_config()
 
     # EXT-TRIGS
@@ -258,3 +259,8 @@ class BroadcastMgr:
         self._min_cycle = min_cycle
         self._max_cycle = max_cycle
         self.reload_broadcasts()
+
+    # TEMP (compat)
+
+    def expire_broadcast(self, *args, **kwargs):
+        pass
