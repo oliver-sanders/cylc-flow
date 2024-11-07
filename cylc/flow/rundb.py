@@ -241,8 +241,8 @@ class CylcWorkflowDAO:
     TABLES_ATTRS = {
         TABLE_BROADCASTS: [
             ["time", {"is_primary_key": True}],
-            ["cycle"],
-            ["namespace"],
+            ["cycle", {"is_primary_key": True}],
+            ["namespace", {"is_primary_key": True}],
             ["settings"]
         ],
         TABLE_BROADCAST_EVENTS: [

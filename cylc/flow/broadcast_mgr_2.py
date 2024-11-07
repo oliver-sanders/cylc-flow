@@ -17,6 +17,7 @@
 """Manage broadcast (and external trigger broadcast)."""
 
 import json
+from itertools import product
 from threading import RLock
 from typing import TYPE_CHECKING
 
@@ -119,7 +120,15 @@ class BroadcastMgr:
 
     # INTERFACES
 
-    def put_broadcast(self, cycle=None, namespace=None, settings=None):
+    def put_broadcast(self, cycles, namespaces, settings=None):
+        modified_settings = []
+        for cycle, namespace in product(cycles, namespaces):
+            modified_settings.append(self._put_broadcast(cycle, namespace, settings))
+
+        bad_options = []
+        return (modified_settings, bad_options)
+
+    def _put_broadcast(self, cycle=None, namespace=None, settings=None):
         time = get_current_time_string(display_sub_seconds=True)
 
         if self._is_cycle_in_window(cycle):
@@ -131,8 +140,7 @@ class BroadcastMgr:
             time, cycle, namespace, serialise_settings(settings)
         )
 
-        # return modified_settings, bad_options
-        return ([(cycle, namespace, settings)], [])
+        return (cycle, namespace, settings)
 
     def clear_broadcast(
         self,
