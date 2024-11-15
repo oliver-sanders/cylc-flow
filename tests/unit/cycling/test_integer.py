@@ -23,6 +23,11 @@ from cylc.flow.cycling.integer import (
     IntervalParsingError,
     SequenceParsingError,
 )
+from cylc.flow.cycling.iso8601 import (
+    ISO8601Point,
+    ISO8601Interval,
+)
+from cylc.flow.exceptions import CyclerTypeError
 
 
 def test_exclusions_simple():
@@ -219,6 +224,18 @@ def test_interval_arithmetic():
 
     assert a + IntegerInterval.get_null_offset() == a
 
+    with pytest.raises(CyclerTypeError):
+        IntegerPoint(1000) - ISO8601Point('1000')
+
+    with pytest.raises(CyclerTypeError):
+        IntegerPoint(1000) + ISO8601Point('1000')
+
+    with pytest.raises(CyclerTypeError):
+        IntegerInterval('P1') - ISO8601Interval('P1Y')
+
+    with pytest.raises(CyclerTypeError):
+        IntegerInterval('P1') + ISO8601Interval('P1Y')
+
 
 def test_async_expr():
     """The async expression should run once and only once."""
@@ -226,3 +243,20 @@ def test_async_expr():
     sequence = IntegerSequence(IntegerSequence.get_async_expr(point), 1, 10)
     assert sequence.get_next_point(IntegerPoint('1')) == point
     assert sequence.get_next_point(IntegerPoint('5')) is None
+
+
+def test_point_comparisons():
+    # basic comparisons
+    assert IntegerPoint(1) == IntegerPoint(1)
+    assert IntegerPoint(1) < IntegerPoint(2)
+    assert IntegerPoint(1) <= IntegerPoint(2)
+    assert IntegerPoint(1) != IntegerPoint(2)
+
+    # None comparisons work counter intuatively
+    # (reason unknown)
+    assert IntegerPoint(1) < None
+    assert None > IntegerPoint(1)
+
+    # compare against other PointBase implementations
+    assert ISO8601Point('1000') > IntegerPoint(1000)
+    assert IntegerPoint(1000) < ISO8601Point('1000')
