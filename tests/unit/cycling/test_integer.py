@@ -250,13 +250,33 @@ def test_point_comparisons():
     assert IntegerPoint(1) == IntegerPoint(1)
     assert IntegerPoint(1) < IntegerPoint(2)
     assert IntegerPoint(1) <= IntegerPoint(2)
+    assert IntegerPoint(2) >= IntegerPoint(1)
     assert IntegerPoint(1) != IntegerPoint(2)
+    assert IntegerInterval('P1') == IntegerInterval('P1')
+    assert IntegerInterval('P1') < IntegerInterval('P2')
+    assert IntegerInterval('P1') <= IntegerInterval('P2')
+    assert IntegerInterval('P2') >= IntegerInterval('P1')
+    assert IntegerInterval('P1') != IntegerInterval('P2')
 
     # None comparisons work counter intuatively
     # (reason unknown)
     assert IntegerPoint(1) < None
     assert None > IntegerPoint(1)
+    assert IntegerInterval('P1') < None
+    assert None > IntegerInterval('P1')
 
     # compare against other PointBase implementations
     assert ISO8601Point('1000') > IntegerPoint(1000)
     assert IntegerPoint(1000) < ISO8601Point('1000')
+    assert ISO8601Interval('P1Y') > IntegerInterval('P1')
+    assert IntegerInterval('P1') < ISO8601Interval('P1Y')
+
+
+def test_string_representations():
+    p = IntegerPoint(1)
+    assert str(p) == '1'
+    assert repr(p) == '1'
+
+    i = IntegerInterval('P1')
+    assert str(i) == 'P1'
+    assert repr(i) == '<IntegerInterval P1>'
