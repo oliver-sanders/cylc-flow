@@ -405,7 +405,7 @@ class JobRunnerManager():
 
         # Delete old job logs if necessary
         for name in JOB_LOG_ERR, JOB_LOG_OUT:
-            try:
+            try:  # noqa
                 os.unlink(os.path.join(job_file_dir, name))
             except FileNotFoundError:
                 pass
