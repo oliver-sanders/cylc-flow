@@ -12,6 +12,10 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+defaults:
+  run:
+    shell: /home/runner/micromamba/envs/cylc/bin/bash -elo pipefail {0}
+
 jobs:
   test:
     runs-on: ${{ matrix.os }}
@@ -20,12 +24,10 @@ jobs:
       fail-fast: false # don't stop on first failure
       matrix:
         os: ['ubuntu-latest']
-        python-version: ['3.8', '3.10', '3.11', '3']
+        python-version: ['3.7', '3.8', '3.10', '3.11', '3.12', '3']
         include:
-          - os: 'ubuntu-22.04'
-            python-version: '3.7'
           - os: 'macos-latest'
-            python-version: '3.9'  # oldest supported version
+            python-version: '3.8'  # oldest version with arm64 builds
           # non-utc timezone test
           - os: 'ubuntu-latest'
             python-version: '3.9'  # not the oldest, not the most recent version
@@ -40,15 +42,15 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Configure Python
-        uses: actions/setup-python@v5
+        uses: mamba-org/setup-micromamba@v2
         with:
-          python-version: ${{ matrix.python-version }}
-
-      - name: Apt-Get Install
-        if: startsWith(matrix.os, 'ubuntu')
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y sqlite3
+          generate-run-shell: true
+          cache-environment: true
+          post-cleanup: 'all'
+          environment-name: cylc
+          create-args: >-
+            python=${{ matrix.python-version }}
+            sqlite
 
       - name: Patch DNS
         uses: cylc/release-actions/patch-dns@v1
@@ -99,19 +101,23 @@ jobs:
   lint:
     runs-on: 'ubuntu-latest'
     timeout-minutes: 10
+    strategy:
+      matrix:
+        python-version: ['3']
     steps:
-      - name: Apt-Get Install
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y shellcheck
-
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Configure Python
-        uses: actions/setup-python@v5
+        uses: mamba-org/setup-micromamba@v2
         with:
-          python-version: 3.x
+          generate-run-shell: true
+          cache-environment: true
+          post-cleanup: 'all'
+          environment-name: cylc
+          create-args: >-
+            python=${{ matrix.python-version }}
+            shellcheck
 
       - name: Install
         run: |
