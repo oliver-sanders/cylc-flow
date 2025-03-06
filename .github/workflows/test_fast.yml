@@ -50,6 +50,7 @@ jobs:
           environment-name: cylc
           create-args: >-
             python=${{ matrix.python-version }}
+            pip
             sqlite
 
       - name: Patch DNS
@@ -117,6 +118,7 @@ jobs:
           environment-name: cylc
           create-args: >-
             python=${{ matrix.python-version }}
+            pip
             shellcheck
 
       - name: Install
