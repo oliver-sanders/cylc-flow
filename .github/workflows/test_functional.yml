@@ -146,7 +146,8 @@ jobs:
 
       - name: Add .github/bin/ to PATH
         # Sets up mocked mail command & any other custom executables
-        run: echo "${{ github.workspace }}/.github/bin" >> $GITHUB_PATH
+        # run: echo "${{ github.workspace }}/.github/bin" >> $GITHUB_PATH
+        run: echo "export PATH=\"${{ github.workspace }}/.github/bin:$PATH\"" >> ~/.bashrc
 
       - name: Install
         run: |
