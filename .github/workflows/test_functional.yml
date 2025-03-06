@@ -34,7 +34,7 @@ concurrency:
 
 defaults:
   run:
-    shell: /home/runner/micromamba/envs/cylc/bin/bash -elo pipefail {0}
+    shell: bash -c "exec $CONDA_PREFIX/bin/bash -elo pipefail {0}"
 
 jobs:
   test:
@@ -110,7 +110,7 @@ jobs:
           generate-run-shell: true
           cache-environment: true
           post-cleanup: 'all'
-          environment-name: cylc
+          environment-name: cylc-functional-test
           create-args: >-
             python=${{ matrix.python-version }}
             pip

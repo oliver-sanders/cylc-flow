@@ -14,7 +14,7 @@ concurrency:
 
 defaults:
   run:
-    shell: /home/runner/micromamba/envs/cylc/bin/bash -elo pipefail {0}
+    shell: bash -c "exec $CONDA_PREFIX/bin/bash -elo pipefail {0}"
 
 jobs:
   test:
@@ -41,24 +41,25 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Configure Python
+      - name: Install System Dependencies
         uses: mamba-org/setup-micromamba@v2
         with:
           generate-run-shell: true
           cache-environment: true
           post-cleanup: 'all'
-          environment-name: cylc
+          environment-name: cylc-fast-test
           create-args: >-
             python=${{ matrix.python-version }}
             pip
+            bash
             sqlite
+
+      - name: Install Python Dependencies
+        run: |
+          pip install -e ."[all]"
 
       - name: Patch DNS
         uses: cylc/release-actions/patch-dns@v1
-
-      - name: Install
-        run: |
-          pip install -e ."[all]"
 
       - name: Configure git  # Needed by the odd test
         uses: cylc/release-actions/configure-git@v1
@@ -109,19 +110,20 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Configure Python
+      - name: Install System Dependencies
         uses: mamba-org/setup-micromamba@v2
         with:
           generate-run-shell: true
           cache-environment: true
           post-cleanup: 'all'
-          environment-name: cylc
+          environment-name: cylc-lint-test
           create-args: >-
             python=${{ matrix.python-version }}
             pip
+            bash
             shellcheck
 
-      - name: Install
+      - name: Install Python Dependencies
         run: |
           pip install -e ."[tests]"
 
