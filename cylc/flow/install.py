@@ -213,9 +213,12 @@ def reinstall_workflow(
         dry_run=dry_run,
     )
 
-    rsync_cmd.append('--out-format=%i %o %n%L')
-    # %i: itemized changes - needed for rsync to report files with
-    # changed permissions
+    if dry_run:
+        rsync_cmd.append('--out-format=%i %o %n%L')
+        # %i: itemized changes - needed for rsync to report files with
+        # changed permissions
+    else:
+        rsync_cmd.append('--out-format=%o %n%L')
 
     # Run rsync command:
     reinstall_log.info(cli_format(rsync_cmd))
@@ -224,6 +227,10 @@ def reinstall_workflow(
     # * command is constructed via internal interface
     stdout, stderr = (i.strip() for i in proc.communicate())
 
+    reinstall_log.info(
+        f"Copying files from {source} to {rundir}"
+        f"\n{stdout}"
+    )
     if proc.returncode != 0:
         raise WorkflowFilesError(
             f'An error occurred reinstalling from {source} to {rundir}'
