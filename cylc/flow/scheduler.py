@@ -733,6 +733,7 @@ class Scheduler:
 
         except CylcError as exc:  # Includes SchedulerError
             # catch "expected" errors
+            workflow_files.abort_contact_file(str(exc))
             await self.handle_exception(exc)
 
         except Exception as exc:
@@ -745,6 +746,7 @@ class Scheduler:
                     '\nhttps://github.com/cylc/cylc-flow/issues/new'
                     '?assignees=&labels=bug&template=bug.md&title=;'
                 )
+            workflow_files.abort_contact_file(str(exc))
             await self.handle_exception(exc)
 
         else:

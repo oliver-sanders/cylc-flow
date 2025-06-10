@@ -59,7 +59,7 @@ import json
 from pathlib import Path
 from typing import Callable, Optional, TYPE_CHECKING
 
-from ansimarkup import ansiprint as cprint
+from ansimarkup import ansiprint as cprint, strip as cstrip
 
 from cylc.flow import LOG
 from cylc.flow.cfgspec.glbl_cfg import glbl_cfg
@@ -99,19 +99,21 @@ FLOW_STATE_CMAP = {
     'running': 'green',
     'paused': 'fg 172',
     'stopping': 'fg 201',
-    'stopped': 'red'
+    'stopped': 'red',
+    'aborted': 'bg red',
 }
 
 
 # workflow status symbols
 FLOW_STATE_SYMBOLS = {
-    # NOTE: the standard media control characters ▶️,, ⏸️,, ⏹️
+    # NOTE: the standard media control characters ▶️, ⏸️, ⏹️
     #       can appear wildly different font-depending and may not
     #       even be monospace
     'running': '▶',
     'paused': '‖',
     'stopping': '◧',
-    'stopped': '■'
+    'stopped': '■',
+    'aborted': '!',
 }
 
 
@@ -308,6 +310,11 @@ def _format_plain(flow, _):
         except KeyError:
             LOG.warning(BAD_CONTACT_FILE_MSG.format(flow_name=flow['name']))
             return None
+    elif flow.get('contact.aborted'):
+        return (
+            f"<b>{flow['name']}</b>"
+            f" ** <red>aborted</red>: {flow.get('abort reason')}"
+        )
     else:
         return f'<{DIM}><b>{flow["name"]}</b></{DIM}>'
 
@@ -319,40 +326,52 @@ def _format_name_only(flow, _):
 
 def _format_rich(flow, opts):
     """A multiline format which pulls in metadata."""
-    status = flow.get('status', 'stopped')
+    if flow.get('contact.aborted'):
+        status = 'aborted'
+    else:
+        status = flow.get('status', 'stopped')
     if opts.colour_blind:
         name = f'{flow["name"]} ({status})'
     else:
         symbol = FLOW_STATE_SYMBOLS[status]
         tag = FLOW_STATE_CMAP[status]
         name = f'<{tag}>{symbol}</{tag}> {flow["name"]}'
-    if not flow.get('contact') or 'status' not in flow:
+    if (
+        status != 'aborted'
+        and (not flow.get('contact') or 'status' not in flow)
+    ):
         ret = [f'<{DIM}><b>{name}</b></{DIM}>']
     else:
         ret = [f'<b>{name}</b>']
 
-        display = {
-            'state totals': state_totals(
-                flow['stateTotals'], opts.colour_blind
-            ),
-            **{
-                key: flow['meta'][key] or f'<{DIM}>*null*</{DIM}>'
-                for key in (
-                    'title',
-                    'description'
-                )
-            },
-            **{
-                name: flow[key]
-                for name, key in (
-                    ('version', 'cylcVersion'),
-                    ('host', Cont.HOST),
-                    ('port', Cont.PORT),
-                    ('PID', Cont.PID)
-                )
+        if status == 'aborted':
+            display = {
+                '<red>workflow aborted</red>': 'This workflow has shut down',
+                'abort reason': flow.get('abort reason')
             }
-        }
-        maxlen = max(len(key) for key in display)
+        else:
+            display = {
+                'state totals': state_totals(
+                    flow['stateTotals'], opts.colour_blind
+                ),
+                **{
+                    key: flow['meta'][key] or f'<{DIM}>*null*</{DIM}>'
+                    for key in (
+                        'title',
+                        'description'
+                    )
+                },
+                **{
+                    name: flow[key]
+                    for name, key in (
+                        ('version', 'cylcVersion'),
+                        ('host', Cont.HOST),
+                        ('port', Cont.PORT),
+                        ('PID', Cont.PID)
+                    )
+                }
+            }
+        maxlen = max(len(cstrip(key)) for key in display)
         for key, value in display.items():
             # format multiline strings by whitespace padding the lines
             value = ('\n' + (' ' * (maxlen + 7))).join(value.splitlines())
@@ -481,7 +500,6 @@ def get_pipe(opts, formatter, scan_dir=None):
 
     # get fancy data if requested
     if formatter == _format_rich:
-        # graphql_fields['status'] = None
         graphql_fields.update(RICH_FIELDS)
 
     # add graphql queries / filters to the pipe

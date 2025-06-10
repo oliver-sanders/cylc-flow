@@ -235,6 +235,15 @@ class WorkflowFiles:
         For details of the fields see ``ContactFileFields``.
         """
 
+        CONTACT_ABORTED = 'contact.aborted'
+        """The stale contact file for an aborted workflow run.
+
+        If a workflow aborts in an uncontrolled manner (e.g. `kill -9`), the
+        contact file will be left behind. If another Cylc process (e.g. `cylc
+        scan`) detects an aborted workflow, it will move the contact file into
+        this location.
+        """
+
         DB = 'db'
         """The workflow database.
 
@@ -335,6 +344,9 @@ class ContactFileFields:
 
     SCHEDULER_USE_LOGIN_SHELL = 'SCHEDULER_USE_LOGIN_SHELL'
     """Remote command setting for Scheduler."""
+
+    ABORT_REASON = 'ABORT_REASON'
+    """The reason the workflow aborted (for use with CONTACT_ABORTED)."""
 
 
 REG_DELIM = "/"
@@ -532,7 +544,7 @@ def detect_old_contact_file(
         # ... the process isn't running so the contact file is out of date
         # remove it
         try:
-            os.unlink(fname)
+            abort_contact_file(id_)
         except FileNotFoundError:
             # contact file has been removed by another process
             # (likely by another cylc client, no problem, safe to ignore)
@@ -547,6 +559,40 @@ def detect_old_contact_file(
             LOG.info(
                 f'Removed contact file for {id_}'
                 ' (workflow no longer running).'
+            )
+
+
+def abort_contact_file(id_: str, reason: str = 'Cause unknown') -> None:
+    """Mark a workflow as aborted by renaming the contact file.
+
+    This records the reason for the workflow abort in the contact file, then
+    renames the contact file to mark the workflow as aborted.
+
+    The contact file will only be moved if created, it will not be created
+    otherwise. Any OSError's will be ignored (we can't abort an abort).
+
+    Args:
+        id_: The workflow ID.
+        reason: The cause of the abort.
+
+    """
+    contact_file_path = get_contact_file_path(id_)
+    if os.path.exists(contact_file_path):
+        with suppress(OSError):
+            # try to record the reason for the abort
+            # (this might fail, e.g. if we have run out of disk quota)
+            with open(contact_file_path, 'a') as contact_file:
+                contact_file.write(
+                    f'{ContactFileFields.ABORT_REASON}={reason}\n'
+                )
+                contact_file.flush()
+        with suppress(OSError):
+            # try to move the contact file
+            os.rename(
+                contact_file_path,
+                get_contact_file_path(
+                    id_, filename=WorkflowFiles.Service.CONTACT_ABORTED
+                ),
             )
 
 
@@ -567,10 +613,10 @@ def dump_contact_file(id_, data):
     os.close(dir_fileno)
 
 
-def get_contact_file_path(id_: str) -> str:
+def get_contact_file_path(id_: str, filename=WorkflowFiles.Service.CONTACT) -> str:
     """Return name of contact file."""
     return os.path.join(
-        get_workflow_srv_dir(id_), WorkflowFiles.Service.CONTACT)
+        get_workflow_srv_dir(id_), filename)
 
 
 def get_flow_file(id_: str) -> Path:
@@ -644,14 +690,18 @@ def refresh_nfs_cache(path: Path):
         deque((cylc_run_dir / subdir).iterdir(), maxlen=0)
 
 
-def load_contact_file(id_: str, run_dir=None) -> Dict[str, str]:
+def load_contact_file(
+    id_: str,
+    run_dir=None,
+    filename=WorkflowFiles.Service.CONTACT,
+) -> Dict[str, str]:
     if not run_dir:
-        path = Path(get_contact_file_path(id_))
+        path = Path(get_contact_file_path(id_, filename))
     else:
         path = Path(
             run_dir,
             WorkflowFiles.Service.DIRNAME,
-            WorkflowFiles.Service.CONTACT
+            filename,
         )
 
     if not path.exists():
@@ -659,13 +709,13 @@ def load_contact_file(id_: str, run_dir=None) -> Dict[str, str]:
         try:
             refresh_nfs_cache(path)
         except FileNotFoundError as exc:
-            raise ServiceFileError("Couldn't load contact file") from exc
+            raise ServiceFileError(f"Couldn't load {filename} file") from exc
 
     try:
         with open(path) as f:
             file_content = f.read()
     except IOError as exc:
-        raise ServiceFileError("Couldn't load contact file") from exc
+        raise ServiceFileError(f"Couldn't load {filename} file") from exc
     data: Dict[str, str] = {}
     for line in file_content.splitlines():
         key, value = [item.strip() for item in line.split("=", 1)]

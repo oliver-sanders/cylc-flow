@@ -89,6 +89,7 @@ from cylc.flow.workflow_files import (
 
 SERVICE = Path(WorkflowFiles.Service.DIRNAME)
 CONTACT = Path(WorkflowFiles.Service.CONTACT)
+CONTACT_ABORTED = Path(WorkflowFiles.Service.CONTACT_ABORTED)
 
 EXCLUDE_FILES = {
     WorkflowFiles.RUN_N,
@@ -324,11 +325,28 @@ async def is_active(flow, is_active):
     try:
         contents = await scandir(service)
     except FileNotFoundError:
+        # service dir does not exist
         _is_active = False
     else:
+        # check for the presence of the contact file
         _is_active = any(
             path.name == WorkflowFiles.Service.CONTACT for path in contents
         )
+        if not _is_active:
+            # if there is no contact file, check for the contact.aborted file
+            if any(
+                path.name == WorkflowFiles.Service.CONTACT_ABORTED
+                for path in contents
+            ):
+                flow['contact.aborted'] = service / CONTACT_ABORTED
+                flow['abort reason'] = (
+                    await load_contact_file_async(
+                        flow['name'],
+                        run_dir=flow['path'],
+                        filename=WorkflowFiles.Service.CONTACT_ABORTED,
+                    )
+                ).get(ContactFileFields.ABORT_REASON, 'Cause unknown')
+
     if _is_active:
         flow['contact'] = service / CONTACT
     return _is_active == is_active
