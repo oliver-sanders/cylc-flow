@@ -48,6 +48,15 @@ class IDTokens(Enum):
     Job = 'job'
 
 
+def log(fcn):
+    return fcn
+    def _inner(*args, **kwargs):
+        ret = fcn(*args, **kwargs)
+        print(f'{fcn.__name__}({", ".join([*map(str, args), *[f"{key}={value}" for key, value in kwargs.items()]])}) -> {ret}')
+        return ret
+    return _inner
+
+
 class Tokens(dict):
     """A parsed representation of a Cylc universal identifier (UID).
 
@@ -157,9 +166,12 @@ class Tokens(dict):
             id_ = self.id
         return f'<id: {id_}>'
 
+    @log
     def __hash__(self):
-        return hash(tuple(self.values()))
+        # return hash(tuple(self.values()))
+        return hash(tuple(sorted(((k, v) for k, v in self.items() if v))))
 
+    @log
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
             return False
@@ -168,12 +180,15 @@ class Tokens(dict):
             for key in self._KEYS
         )
 
+    @log
     def __lt__(self, other):
         return self.id < other.id
 
+    @log
     def __gt__(self, other):
         return self.id > other.id
 
+    @log
     def __ne__(self, other):
         if not isinstance(other, self.__class__):
             return True

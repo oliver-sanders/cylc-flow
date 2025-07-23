@@ -15,6 +15,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from fnmatch import fnmatchcase
+import fnmatch
 from typing import (
     Any,
     Callable,
@@ -22,11 +23,16 @@ from typing import (
     Iterable,
     List,
     TYPE_CHECKING,
+    Set,
+    Tuple,
     # Tuple,
     # Union,
     # overload,
 )
 
+
+from cylc.flow.parsec.util import un_many
+from cylc.flow.taskdef import TaskDef
 from metomi.isodatetime.exceptions import ISO8601SyntaxError
 
 from cylc.flow import LOG
@@ -37,6 +43,7 @@ from cylc.flow.cycling.loader import get_point
 if TYPE_CHECKING:
     # from typing_extensions import Literal
 
+    from cylc.flow.config import WorkflowConfig
     from cylc.flow.task_pool import Pool
     from cylc.flow.task_proxy import TaskProxy
     from cylc.flow.cycling import PointBase
@@ -247,3 +254,113 @@ def point_match(
         if pattern_match:
             return fnmatchcase(str(point), value)
         return False
+
+
+def id_match(
+    config: 'WorkflowConfig',
+    pool: 'Pool',
+    ids: Set[Tokens],
+):
+    unmatched: Set[Tokens] = set()
+
+    pattern_ids = {
+        id_
+        for id_ in ids
+        if contains_fnmatch(id_.relative_id_with_selectors)
+    }
+    plain_ids = ids - pattern_ids
+
+    pattern_ids, _unmatched = _expand_globs(config, pool, pattern_ids)
+    print(f'expand_globs: {pattern_ids}')
+    unmatched.update(_unmatched)
+
+    plain_ids, _unmatched = _expand_plain_ids(config, plain_ids)
+    unmatched.update(_unmatched)
+
+    return {*pattern_ids, *plain_ids}, unmatched
+
+
+def _expand_globs(
+    config: 'WorkflowConfig',
+    pool: 'Pool',
+    ids: Set[Tokens],
+) -> Tuple[Set[Tokens], Set[Tokens]]:
+    all_active_tasks = {
+        itask.tokens.task
+        for itasks in pool.values()
+        for itask in itasks.values()
+    }
+    all_cycles = {str(icycle) for icycle in pool}
+    all_namespaces = config.get_namespace_list('all namespaces')
+    unmatched: Set[Tokens] = set()
+
+    ret: Set[Tokens] = set()
+    for id_ in ids:
+        _cycles = _fnmatchcase_glob(id_['cycle'], all_cycles)
+
+        _namespace = id_.get('task', '*') or 'root'
+        _tasks = {
+            task
+            for namespace in _fnmatchcase_glob(_namespace, all_namespaces)
+            for task in config.runtime['descendants'].get(namespace, [])
+            if task not in config.runtime['descendants']
+        }
+
+        if not _cycles or not _tasks:
+            unmatched.add(id_)
+        else:
+            matched = {
+                id_.duplicate(cycle=_cycle, task=_task)
+                # for _cycle, _task in zip(_cycles, _tasks)
+                for _cycle in _cycles
+                for _task in _tasks
+            }.intersection(all_active_tasks)
+            if matched:
+                ret = ret.union(matched)
+                print(f'# hit {id_} => {ret}')
+            else:
+                unmatched.add(id_)
+                print(f'# miss {id_}')
+            
+    return ret, unmatched
+
+
+def _expand_plain_ids(
+    config: 'WorkflowConfig',
+    ids: Set[Tokens],
+) -> Tuple[Set[Tokens], Set[Tokens]]:
+    all_namespaces = config.get_namespace_list('all namespaces')
+    unmatched: Set[Tokens] = set()
+
+    ret: Set[Tokens] = set()
+    for id_ in ids:
+        _namespace = id_.get('task', '*') or 'root'
+        _tasks = {
+            task
+            for namespace in _fnmatchcase_glob(_namespace, all_namespaces)
+            for task in config.runtime['descendants'].get(namespace, [])
+            if task not in config.runtime['descendants']
+        }
+        # if 'B' in _tasks:
+        #     breakpoint()
+
+        if not _tasks:
+            unmatched.add(id_)
+        else:
+            ret.update({
+                id_.duplicate(task=_task)
+                for _task in _tasks
+            })
+            
+    return ret, unmatched
+
+
+def _fnmatchcase_glob(pattern, values):
+    return {
+        value
+        for value in values
+        if fnmatchcase(value, pattern)
+    }
+
+
+# DAMMIT: only task SELECTORS are n=0 bound, task globs should expand
