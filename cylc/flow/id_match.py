@@ -14,6 +14,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+from copy import deepcopy
 from fnmatch import fnmatchcase
 import fnmatch
 from typing import (
@@ -261,106 +262,121 @@ def id_match(
     pool: 'Pool',
     ids: Set[Tokens],
 ):
+    """New Cylc 8.6.0 task matching interface."""
     unmatched: Set[Tokens] = set()
 
-    pattern_ids = {
+    # separate IDs targeting active tasks ONLY from the remainder
+    active_only_ids = {
         id_
         for id_ in ids
-        if contains_fnmatch(id_.relative_id_with_selectors)
+        if id_.get('task_sel') or id_.get('cycle_sel')
     }
-    plain_ids = ids - pattern_ids
+    plain_ids = ids - active_only_ids
 
-    pattern_ids, _unmatched = _expand_globs(config, pool, pattern_ids)
-    print(f'expand_globs: {pattern_ids}')
+    # match active-only IDs
+    active_only_ids, _unmatched = _match(
+        config, pool, active_only_ids, only_match_active=True
+    )
     unmatched.update(_unmatched)
 
-    plain_ids, _unmatched = _expand_plain_ids(config, plain_ids)
+    # match IDs
+    plain_ids, _unmatched = _match(config, pool, plain_ids)
     unmatched.update(_unmatched)
 
-    return {*pattern_ids, *plain_ids}, unmatched
+    return {*active_only_ids, *plain_ids}, unmatched
 
 
-def _expand_globs(
+def _get_family_lookup(config: 'WorkflowConfig') -> Dict[str, Set[str]]:
+    """Return a dict mapping families to all contained tasks.
+
+    This recursively expands families avoiding the need to do so later.
+    """
+    lookup = deepcopy(config.runtime['descendants'])
+
+    def _iter():
+        ret = False
+        for family, namespaces in lookup.items():
+            for namespace in list(namespaces):
+                if namespace in config.runtime['descendants']:
+                    ret = True
+                    namespaces.remove(namespace)
+                    namespaces.update(config.runtime['descendants'][namespace])
+        return ret
+
+    while _iter():
+        pass
+
+    return lookup
+
+
+def _match(
     config: 'WorkflowConfig',
     pool: 'Pool',
     ids: Set[Tokens],
+    only_match_active: bool = False,
 ) -> Tuple[Set[Tokens], Set[Tokens]]:
-    all_active_tasks = {
-        itask.tokens.task
+    # mapping of family name to all contained tasks
+    family_lookup: Dict[str, Set[str]] = _get_family_lookup(config)
+
+    # set of all active task IDs (including their statuses as task selectors)
+    all_active_tasks: Set[Tokens] = {
+        Tokens(
+            cycle=itask.tokens['cycle'],
+            task=itask.tokens['task'],
+            task_sel=itask.state.status,
+        )
         for itasks in pool.values()
         for itask in itasks.values()
     }
-    all_cycles = {str(icycle) for icycle in pool}
-    all_namespaces = config.get_namespace_list('all namespaces')
-    unmatched: Set[Tokens] = set()
 
-    ret: Set[Tokens] = set()
+    # set of all active cycles
+    all_cycles: Set[str] = {str(icycle) for icycle in pool}
+
+    # set of all possible namespaces (tasks + families)
+    all_namespaces: Dict[str, Any] = config.get_namespace_list('all namespaces')
+
+    # results
+    unmatched: Set[Tokens] = set()
+    matched: Set[Tokens] = set()
+
     for id_ in ids:
+        # match cycles
         _cycles = _fnmatchcase_glob(id_['cycle'], all_cycles)
 
+        # match tasks
         _namespace = id_.get('task', '*') or 'root'
         _tasks = {
             task
             for namespace in _fnmatchcase_glob(_namespace, all_namespaces)
-            for task in config.runtime['descendants'].get(namespace, [])
-            if task not in config.runtime['descendants']
+            for task in family_lookup.get(namespace, {namespace})
         }
 
-        if not _cycles or not _tasks:
-            unmatched.add(id_)
-        else:
-            matched = {
-                id_.duplicate(cycle=_cycle, task=_task)
-                # for _cycle, _task in zip(_cycles, _tasks)
-                for _cycle in _cycles
-                for _task in _tasks
-            }.intersection(all_active_tasks)
-            if matched:
-                ret = ret.union(matched)
-                print(f'# hit {id_} => {ret}')
-            else:
-                unmatched.add(id_)
-                print(f'# miss {id_}')
-            
-    return ret, unmatched
-
-
-def _expand_plain_ids(
-    config: 'WorkflowConfig',
-    ids: Set[Tokens],
-) -> Tuple[Set[Tokens], Set[Tokens]]:
-    all_namespaces = config.get_namespace_list('all namespaces')
-    unmatched: Set[Tokens] = set()
-
-    ret: Set[Tokens] = set()
-    for id_ in ids:
-        _namespace = id_.get('task', '*') or 'root'
-        _tasks = {
-            task
-            for namespace in _fnmatchcase_glob(_namespace, all_namespaces)
-            for task in config.runtime['descendants'].get(namespace, [])
-            if task not in config.runtime['descendants']
+        # expand matched IDs
+        _matched = {
+            Tokens(
+                cycle=_cycle,
+                task=_task,
+                task_sel=id_.get('task_sel') or id_.get('cycle_sel'),
+            )
+            for _cycle in _cycles
+            for _task in _tasks
         }
-        # if 'B' in _tasks:
-        #     breakpoint()
 
-        if not _tasks:
-            unmatched.add(id_)
+        if only_match_active:
+            # filter against active tasks
+            _matched = _matched.intersection(all_active_tasks)
+
+        if _matched:
+            matched = matched.union(_matched)
         else:
-            ret.update({
-                id_.duplicate(task=_task)
-                for _task in _tasks
-            })
-            
-    return ret, unmatched
+            unmatched.add(id_)
+
+    return matched, unmatched
 
 
-def _fnmatchcase_glob(pattern, values):
+def _fnmatchcase_glob(pattern: str, values: Iterable[str]) -> Set[str]:
     return {
         value
         for value in values
         if fnmatchcase(value, pattern)
     }
-
-
-# DAMMIT: only task SELECTORS are n=0 bound, task globs should expand
