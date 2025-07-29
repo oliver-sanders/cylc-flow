@@ -16,14 +16,13 @@
 
 from copy import deepcopy
 from fnmatch import fnmatchcase
-import fnmatch
 from typing import (
+    TYPE_CHECKING,
     Any,
     Callable,
     Dict,
     Iterable,
     List,
-    TYPE_CHECKING,
     Set,
     Tuple,
     # Tuple,
@@ -31,23 +30,21 @@ from typing import (
     # overload,
 )
 
-
-from cylc.flow.parsec.util import un_many
-from cylc.flow.taskdef import TaskDef
 from metomi.isodatetime.exceptions import ISO8601SyntaxError
 
 from cylc.flow import LOG
+from cylc.flow.cycling.loader import get_point
 from cylc.flow.id import IDTokens, Tokens
 from cylc.flow.id_cli import contains_fnmatch
-from cylc.flow.cycling.loader import get_point
+
 
 if TYPE_CHECKING:
     # from typing_extensions import Literal
 
     from cylc.flow.config import WorkflowConfig
+    from cylc.flow.cycling import PointBase
     from cylc.flow.task_pool import Pool
     from cylc.flow.task_proxy import TaskProxy
-    from cylc.flow.cycling import PointBase
 
 
 # @overload
@@ -261,8 +258,18 @@ def id_match(
     config: 'WorkflowConfig',
     pool: 'Pool',
     ids: Set[Tokens],
-):
-    """New Cylc 8.6.0 task matching interface."""
+) -> Tuple[Set[Tokens], Set[Tokens]]:
+    """New Cylc 8.6.0 task matching interface.
+
+    Args:
+        config: The workflow config.
+        pool: The task pool (used to determine active cycles/tasks).
+        ids: The provided IDs to match.
+
+    Returns:
+        (matched, unmatched)
+
+    """
     unmatched: Set[Tokens] = set()
 
     # separate IDs targeting active tasks ONLY from the remainder
@@ -284,29 +291,6 @@ def id_match(
     unmatched.update(_unmatched)
 
     return {*active_only_ids, *plain_ids}, unmatched
-
-
-def _get_family_lookup(config: 'WorkflowConfig') -> Dict[str, Set[str]]:
-    """Return a dict mapping families to all contained tasks.
-
-    This recursively expands families avoiding the need to do so later.
-    """
-    lookup = deepcopy(config.runtime['descendants'])
-
-    def _iter():
-        ret = False
-        for family, namespaces in lookup.items():
-            for namespace in list(namespaces):
-                if namespace in config.runtime['descendants']:
-                    ret = True
-                    namespaces.remove(namespace)
-                    namespaces.update(config.runtime['descendants'][namespace])
-        return ret
-
-    while _iter():
-        pass
-
-    return lookup
 
 
 def _match(
@@ -341,7 +325,10 @@ def _match(
 
     for id_ in ids:
         # match cycles
-        _cycles = _fnmatchcase_glob(id_['cycle'], all_cycles)
+        if contains_fnmatch(id_['cycle']):
+            _cycles = _fnmatchcase_glob(id_['cycle'], all_cycles)
+        else:
+            _cycles = {id_['cycle']}
 
         # match tasks
         _namespace = id_.get('task', '*') or 'root'
@@ -365,6 +352,15 @@ def _match(
         if only_match_active:
             # filter against active tasks
             _matched = _matched.intersection(all_active_tasks)
+        else:
+            # filter for on-sequence task instances
+            for id__ in list(_matched):
+                try:
+                    taskdef = config.taskdefs[id__['task']]
+                    if not taskdef.is_valid_point(get_point(id__['cycle'])):
+                        _matched.remove(id__)
+                except (ValueError, KeyError):
+                    _matched.remove(id__)
 
         if _matched:
             matched = matched.union(_matched)
@@ -375,8 +371,47 @@ def _match(
 
 
 def _fnmatchcase_glob(pattern: str, values: Iterable[str]) -> Set[str]:
+    """Convenience function for globing over a list of values.
+
+    This uses the "fnmatchcase" function which is shell glob like.
+
+    Args:
+        Pattern: The glob.
+        Values: The things to evaluate the glob over.
+
+    Examples:
+        >>> sorted(_fnmatchcase_glob('*', {'a', 'b', 'c'}))
+        ['a', 'b', 'c']
+
+        >>> sorted(_fnmatchcase_glob('a*', {'a1', 'a2', 'b1'}))
+        ['a1', 'a2']
+
+    """
     return {
         value
         for value in values
         if fnmatchcase(value, pattern)
     }
+
+
+def _get_family_lookup(config: 'WorkflowConfig') -> Dict[str, Set[str]]:
+    """Return a dict mapping families to all contained tasks.
+
+    This recursively expands families avoiding the need to do so later.
+    """
+    lookup = deepcopy(config.runtime['descendants'])
+
+    def _iter():
+        ret = False
+        for family, namespaces in lookup.items():
+            for namespace in list(namespaces):
+                if namespace in config.runtime['descendants']:
+                    ret = True
+                    namespaces.remove(namespace)
+                    namespaces.update(config.runtime['descendants'][namespace])
+        return ret
+
+    while _iter():
+        pass
+
+    return lookup

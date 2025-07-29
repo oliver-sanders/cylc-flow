@@ -1,9 +1,25 @@
+# THIS FILE IS PART OF THE CYLC WORKFLOW ENGINE.
+# Copyright (C) NIWA & British Crown (Met Office) & Contributors.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+from typing import Set, Tuple
+
 from cylc.flow import commands
-from functools import partial
 from cylc.flow.id import Tokens
-from cylc.flow.scheduler import Scheduler
 from cylc.flow.id_match import id_match
-from typing import List, Set, Tuple
+from cylc.flow.scheduler import Scheduler
 
 
 async def test_id_match(flow, scheduler, start):
@@ -11,9 +27,9 @@ async def test_id_match(flow, scheduler, start):
         'scheduling': {
             'cycling mode': 'integer',
             'initial cycle point': '1',
-            'final cycle point': '2',
+            'final cycle point': '3',
             'graph': {
-               'P1': '''
+               'P2': '''
                     a1 => b1 => c1
                     a2 => b2 => c2
 
@@ -43,8 +59,16 @@ async def test_id_match(flow, scheduler, start):
         }
 
     async with start(schd):
-        await commands.run_cmd(commands.set_prereqs_and_outputs(schd, ['1/a2'], ['1'], ['succeeded'], None))
-        await commands.run_cmd(commands.set_prereqs_and_outputs(schd, ['1/b2'], ['1'], ['failed'], None))
+        await commands.run_cmd(
+            commands.set_prereqs_and_outputs(
+                schd, ['1/a2'], ['1'], ['succeeded'], None
+            )
+        )
+        await commands.run_cmd(
+            commands.set_prereqs_and_outputs(
+                schd, ['1/b2'], ['1'], ['failed'], None
+            )
+        )
 
         # task pool state:
         # * cycle 1
@@ -63,7 +87,9 @@ async def test_id_match(flow, scheduler, start):
         #   * n=2 c2 waiting
 
         # check the n=0 window matches expecations before proceeding
-        assert {itask.tokens.relative_id for itask in schd.pool.get_tasks()} == {'1/a1', '1/b2', '2/a1', '2/a2'}
+        assert {
+            itask.tokens.relative_id for itask in schd.pool.get_tasks()
+        } == {'1/a1', '1/b2', '3/a1', '3/a2'}
 
         # test active task selection
         assert (
@@ -72,8 +98,8 @@ async def test_id_match(flow, scheduler, start):
             == match('*/*:waiting')
             == match('*/A:waiting')
             == match('*/a*:waiting')
-            == match('1/a1:waiting', '2/a1:waiting', '2/a2:waiting')
-            == ({'1/a1', '2/a1', '2/a2'}, set())
+            == match('1/a1:waiting', '3/a1:waiting', '3/a2:waiting')
+            == ({'1/a1', '3/a1', '3/a2'}, set())
         )
 
         assert (
@@ -93,6 +119,8 @@ async def test_id_match(flow, scheduler, start):
             == ({'1/b2'}, {'1/b1:failed'})
         )
 
+        assert match('*:submit-failed') == (set(), {'*:submit-failed'})
+
         # test regular task selection
         assert (
             match('*')
@@ -108,12 +136,12 @@ async def test_id_match(flow, scheduler, start):
                     '1/b2',
                     '1/c1',
                     '1/c2',
-                    '2/a1',
-                    '2/a2',
-                    '2/b1',
-                    '2/b2',
-                    '2/c1',
-                    '2/c2',
+                    '3/a1',
+                    '3/a2',
+                    '3/b1',
+                    '3/b2',
+                    '3/c1',
+                    '3/c2',
                 },
                 set(),
             )
@@ -125,3 +153,16 @@ async def test_id_match(flow, scheduler, start):
             == match('1/a1', '1/a2')
             == ({'1/a1', '1/a2'}, set())
         )
+
+        assert match('1/X') == (set(), {'1/X'})
+        assert match('5:waiting') == (set(), {'5:waiting'})
+
+        # cycle 2 is not on sequence for task a1
+        assert match('1/a1', '2/a1', '3/a1') == ({'1/a1', '3/a1'}, {'2/a1'})
+
+        # errors
+        assert match('not-a-cycle/*', '*/not_a_task', '*:not-a-state') == (
+            set(),
+            {'not-a-cycle/*', '*/not_a_task', '*:not-a-state'},
+        )
+        assert match('x/y:succeeded') == (set(), {'x/y:succeeded'})
