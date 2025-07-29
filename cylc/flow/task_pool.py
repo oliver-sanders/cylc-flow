@@ -58,7 +58,8 @@ from cylc.flow.id import (
     quick_relative_id,
 )
 from cylc.flow.id_cli import contains_fnmatch
-from cylc.flow.id_match import filter_ids
+from cylc.flow.id_match import id_match
+from cylc.flow.parsec.util import un_many
 from cylc.flow.platforms import get_platform
 from cylc.flow.prerequisite import PrereqTuple
 from cylc.flow.run_modes import RunMode
@@ -2542,52 +2543,84 @@ class TaskPool:
             )
         )
 
+    # def filter_task_proxies(
+    #     self,
+    #     ids: Iterable[str],
+    #     warn_no_active: bool = True,
+    #     inactive: bool = False,
+    # ) -> 'Tuple[List[TaskProxy], Set[Tuple[TaskDef, PointBase]], List[str]]':
+    #     """Return task proxies and inactive tasks that match ids.
+
+    #     (TODO: method should be renamed to "filter_tasks").
+
+    #     Restrictions (for now):
+    #     - globs (cycle and name) only match in the pool
+    #     - inactive tasks must be specified individually
+    #     - family names are not expanded to members
+
+    #     Args:
+    #         ids:
+    #             ID strings.
+    #         warn_no_active:
+    #             Whether to log a warning if no matching tasks are found in the
+    #             pool.
+    #         inactive:
+    #             If True, unmatched IDs will be checked against taskdefs
+    #             and cycle, and any matches will be returned in the second
+    #             return value, provided that the ID:
+
+    #             * Specifies a cycle point.
+    #             * Is not a pattern. (e.g. `*/foo`).
+    #             * Does not contain a state selector (e.g. `:failed`).
+
+    #     Returns:
+    #         (matched, inactive_matched, unmatched)
+
+    #     """
+    #     matched, unmatched = filter_ids(
+    #         self.active_tasks,
+    #         ids,
+    #         warn=warn_no_active,
+    #     )
+    #     inactive_matched: 'Set[Tuple[TaskDef, PointBase]]' = set()
+    #     if inactive and unmatched:
+    #         inactive_matched, unmatched = self.match_inactive_tasks(
+    #             unmatched
+    #         )
+
+    #     return matched, inactive_matched, unmatched
+
     def filter_task_proxies(
         self,
         ids: Iterable[str],
         warn_no_active: bool = True,
         inactive: bool = False,
     ) -> 'Tuple[List[TaskProxy], Set[Tuple[TaskDef, PointBase]], List[str]]':
-        """Return task proxies and inactive tasks that match ids.
+        ids_ = {Tokens(id_, relative=True) for id_ in ids}
+        matched, unmatched = id_match(self.config, self.active_tasks, ids_)
 
-        (TODO: method should be renamed to "filter_tasks").
+        LOG.info(f'Matched tasks: {", ".join(map(str, matched))}')
 
-        Restrictions (for now):
-        - globs (cycle and name) only match in the pool
-        - inactive tasks must be specified individually
-        - family names are not expanded to members
+        matched_active: Set[TaskProxy] = set()
+        matched_inactive: Set[Tuple[TaskDef, PointBase]] = set()
+        for id_ in matched:
+            itask = self.get_task(get_point(id_['cycle']), id_['task'])
+            if itask:
+                matched_active.add(itask)
+            else:
+                matched_inactive.add(
+                    (
+                        self.config.taskdefs[id_['task']],
+                        get_point(id_['cycle']),
+                    )
+                )
 
-        Args:
-            ids:
-                ID strings.
-            warn_no_active:
-                Whether to log a warning if no matching tasks are found in the
-                pool.
-            inactive:
-                If True, unmatched IDs will be checked against taskdefs
-                and cycle, and any matches will be returned in the second
-                return value, provided that the ID:
-
-                * Specifies a cycle point.
-                * Is not a pattern. (e.g. `*/foo`).
-                * Does not contain a state selector (e.g. `:failed`).
-
-        Returns:
-            (matched, inactive_matched, unmatched)
-
-        """
-        matched, unmatched = filter_ids(
-            self.active_tasks,
-            ids,
-            warn=warn_no_active,
+        return (
+            matched_active,
+            matched_inactive,
+            [str(id_) for id_ in unmatched],
         )
-        inactive_matched: 'Set[Tuple[TaskDef, PointBase]]' = set()
-        if inactive and unmatched:
-            inactive_matched, unmatched = self.match_inactive_tasks(
-                unmatched
-            )
 
-        return matched, inactive_matched, unmatched
 
     def match_inactive_tasks(
         self,
