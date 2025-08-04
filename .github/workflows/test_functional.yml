@@ -152,7 +152,7 @@ jobs:
 
           # create a wrapper script for "bash"
           TEMPDIR="$(mktemp -d)"
-          ln -s "$TEMPDIR/bash" "$CONDA_PREFIX/bin/bash"
+          ln -s "$CONDA_PREFIX/bin/bash" "$TEMPDIR/bash"
 
           # add the wrapper script to "$PATH"
           echo "export PATH=\"$TEMPDIR:\$PATH\"" >> ~/.bashrc
