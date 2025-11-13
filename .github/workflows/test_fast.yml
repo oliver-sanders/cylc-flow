@@ -27,7 +27,7 @@ jobs:
       fail-fast: false # don't stop on first failure
       matrix:
         os: ['ubuntu-latest']
-        python-version: ['3.12', '3']
+        python-version: ['python-gil=3.12', 'python-gil=3', 'python-freethreading=3', 'python-jit=3']
         include:
           - os: 'macos-latest'
             python-version: '3.12' # oldest version we support
@@ -49,7 +49,7 @@ jobs:
           post-cleanup: 'all'
           environment-name: cylc-fast-test
           create-args: >-
-            python=${{ matrix.python-version }}
+            ${{ matrix.python-version }}
             pip
             bash
             subversion
@@ -121,7 +121,7 @@ jobs:
           post-cleanup: 'all'
           environment-name: cylc-lint-test
           create-args: >-
-            python=${{ matrix.python-version }}
+            python-gil=${{ matrix.python-version }}
             pip
             bash
             shellcheck
