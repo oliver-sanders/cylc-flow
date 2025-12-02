@@ -39,6 +39,7 @@ from cylc.flow.id import (
 from cylc.flow.id_cli import contains_fnmatch
 from cylc.flow.scripts.set import XTRIGGER_PREREQ_PREFIX
 from cylc.flow.task_outputs import TASK_OUTPUT_SUCCEEDED
+from cylc.flow.task_state import TASK_STATUSES_CANT_MANUALLY_SET
 
 
 if TYPE_CHECKING:
@@ -314,6 +315,22 @@ def consistency(
     """
     if outputs and prereqs:
         raise InputError("Use --prerequisite or --output, not both.")
+
+
+def set_outputs(outputs: list[str] | None):
+    """Check the provided outputs can be legally set.
+
+    Examples:
+        >>> set_outputs(None)
+        >>> set_outputs(['succeeded'])
+        >>> set_outputs(['preparing'])
+        Traceback (most recent call last):
+        cylc.flow.exceptions.InputError: ...
+
+    """
+    for output in outputs or []:
+        if output in TASK_STATUSES_CANT_MANUALLY_SET:
+            raise InputError(f'Cannot set the output "{output}"')
 
 
 def is_tasks(ids: Iterable[str]) -> 'Set[TaskTokens]':

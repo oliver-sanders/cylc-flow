@@ -123,15 +123,13 @@ TASK_STATUSES_NO_JOB_FILE = {
     TASK_STATUS_EXPIRED,
 }
 
-# Task statuses we can manually reset a task TO.
-TASK_STATUSES_CAN_RESET_TO = {
+# Task statuses we cant manually reset a task TO.
+TASK_STATUSES_CANT_MANUALLY_SET = {
+    TASK_STATUS_WAITING,
+    TASK_STATUS_PREPARING,
     TASK_STATUS_SUBMITTED,
     TASK_STATUS_SUBMIT_FAILED,
     TASK_STATUS_RUNNING,
-    TASK_STATUS_WAITING,
-    TASK_STATUS_EXPIRED,
-    TASK_STATUS_SUCCEEDED,
-    TASK_STATUS_FAILED,
 }
 
 # Task statuses that are final.

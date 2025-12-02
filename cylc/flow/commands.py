@@ -318,6 +318,7 @@ async def set_prereqs_and_outputs(
     """
     flow = back_compat_flow_all(flow)  # BACK COMPAT (see func def)
     validate.consistency(outputs, prerequisites)
+    validate.set_outputs(outputs)
     outputs = validate.outputs(outputs)
     prerequisites = validate.prereqs(prerequisites)
     validate.flow_opts(flow, flow_wait)
