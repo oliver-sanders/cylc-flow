@@ -61,6 +61,7 @@ Examples:
   $ cylc cat-log foo//2020/bar -m f
 """
 
+import asyncio
 import os
 from contextlib import suppress
 from glob import glob
@@ -308,7 +309,7 @@ def view_log(
         proc = Popen(shlex.split(cmd), stdin=DEVNULL)  # nosec
         # * batchview command is user configurable
         with suppress(KeyboardInterrupt):
-            watch_and_kill(proc)
+            asyncio.run(watch_and_kill(proc))
         return proc.wait()
 
 

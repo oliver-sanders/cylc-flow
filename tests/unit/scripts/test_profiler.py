@@ -15,19 +15,25 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Tests for functions contained in cylc.flow.scripts.profiler
-from cylc.flow.scripts.profiler import (parse_memory_file,
-                                        parse_cpu_file,
-                                        parse_memory_allocated,
-                                        get_cgroup_name,
-                                        get_cgroup_version,
-                                        get_cgroup_paths,
-                                        get_profiler_data,
-                                        stop_profiler,
-                                        profile,
-                                        Process)
-import pytest
+
 from unittest import mock
+
+import pytest
+
 from cylc.flow.exceptions import CylcProfilerError
+from cylc.flow.scripts.profiler import (
+    Process,
+    _main,
+    get_cgroup_name,
+    get_cgroup_paths,
+    get_cgroup_version,
+    get_profiler_data,
+    parse_cpu_file,
+    parse_memory_allocated,
+    parse_memory_file,
+    profile,
+    stop_profiler,
+)
 
 
 def test_stop_profiler(monkeypatch, tmpdir):
@@ -304,7 +310,7 @@ def test_get_cgroup_paths(mocker):
     assert "Unable to determine cgroup version" in str(excinfo.value)
 
 
-def test_profile_data(mocker):
+async def test_profile_data(mocker):
     # This test should run without error
     mocker.patch("cylc.flow.scripts.profiler.get_cgroup_name",
                  return_value='test_name')
@@ -319,7 +325,7 @@ def test_profile_data(mocker):
     mocker.patch("cylc.flow.scripts.profiler.parse_cpu_file",
                  return_value=2048)
     run_once = mock.Mock(side_effect=[True, False])
-    profile(process, 1, run_once)
+    await profile(process, 1, run_once)
 
 
 @pytest.fixture
@@ -331,7 +337,7 @@ def options(mocker):
     return opts
 
 
-def test_main(mocker, options):
+async def test_main(mocker, options):
     mock_get_cgroup_paths = mocker.patch(
         "cylc.flow.scripts.profiler.get_cgroup_paths"
     )
@@ -340,8 +346,7 @@ def test_main(mocker, options):
 
     mock_get_cgroup_paths.return_value = mocker.Mock()
 
-    from cylc.flow.scripts.profiler import _main
-    _main(options)
+    await _main(options)
 
     mock_get_cgroup_paths.assert_called_once_with("/fake/path")
     assert mock_signal.call_count == 3
