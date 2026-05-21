@@ -20,8 +20,8 @@ from abc import (
     abstractmethod,
 )
 import asyncio
-import getpass
 import os
+import pwd
 from shutil import which
 import socket
 import sys
@@ -392,15 +392,15 @@ class WorkflowRuntimeClient(  # type: ignore[misc]
             if cmd.startswith(cylc_bin_dir):
                 cmd = cmd.replace(cylc_bin_dir, '')
 
-        try:
-            actor = getpass.getuser()
-        except:
-            actor = "unknown"
+        # process owner (unperterbed by environment variables)
+        user = pwd.getpwuid(os.getuid())[0]
 
-        try:
-            user = os.getlogin()
-        except:
-            user = "unknown"
+        # actor (may be influenced by process environment, namely $SUDO_USER)
+        actor = os.getlogin()
+
+        auth_user = user
+        if actor and user != actor:
+            auth_user = f'{user} (possibly actioned by {actor})'
 
         return {
             'meta': {
@@ -411,6 +411,6 @@ class WorkflowRuntimeClient(  # type: ignore[misc]
                         "CLIENT_COMMS_METH",
                         default=CommsMeth.ZMQ.value
                     ),
-                'auth_user': f'{actor} (possibly on behalf of {user})'
+                'auth_user': auth_user,
             }
         }

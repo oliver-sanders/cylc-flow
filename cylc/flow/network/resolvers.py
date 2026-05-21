@@ -701,12 +701,7 @@ class Resolvers(BaseResolvers):
 
         """
         user = meta.get('auth_user', self.schd.owner)
-        if user == self.schd.owner or not user:
-            log_user = f" from {os.getuser()}"
-        else:
-            log_user = f" from {user}"
-
-        received_msg = f'Command "{command}" received{log_user}.'
+        received_msg = f'Command "{command}" received from {user}.'
         signature_str = (
             f"{command}("
             + ", ".join(
