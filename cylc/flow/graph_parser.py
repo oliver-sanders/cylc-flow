@@ -316,6 +316,7 @@ class GraphParser:
                 passed in to allow checking across multiple graph strings
 
         """
+        self.graph_paths = {}
         self.family_map = family_map or {}
         self.parameters = parameters
         self.triggers: Dict = {}
@@ -523,7 +524,9 @@ class GraphParser:
         rights: Set[str] = set()
 
         for pair in sorted(pairs, key=lambda p: str(p[0])):
-            self._proc_dep_pair(pair, check_terminals, lefts, rights)
+            info, _rights = self._proc_dep_pair(pair, check_terminals, lefts, rights)
+            for item in info:
+                self.graph_paths.setdefault(tuple(item), set()).update(set(_rights))
 
         self.terminals = rights.difference(lefts)
         for right in self.terminals:
@@ -534,8 +537,6 @@ class GraphParser:
                     ' side of dependency (must be on left hand side):'
                     f'{left} => {right}'
                 )
-
-        self._clean_graph()
 
     @classmethod
     def _report_invalid_lines(cls, lines: List[str]) -> None:
@@ -628,6 +629,7 @@ class GraphParser:
 
         _rights.update(*([rights] or []))
 
+        _info = []
         for left in lefts:
             # Extract information about all nodes on the left.
             if left:
@@ -645,6 +647,7 @@ class GraphParser:
 
             n_info: List[Tuple[str, str, str, bool]] = []
             for name, offset, trig, opt_char in info:
+                # HERE: offset
                 opt = opt_char == self.__class__.OPTIONAL
                 if name.startswith(self.__class__.XTRIG):
                     n_info.append((name, offset, trig, opt))
@@ -711,7 +714,12 @@ class GraphParser:
 
             # remove '?' from expr (not needed in logical trigger evaluation)
             expr = re.sub(self.__class__._RE_OPT, '', expr)
-            self._families_all_to_all(expr, rights, n_info, family_trig_map)
+            p_expr, p_info = self._families_all_to_all(
+                expr, rights, n_info, family_trig_map
+            )
+            self._compute_triggers(expr, rights, p_expr, p_info)
+            _info.extend(p_info)
+        return _info, rights
 
     def _families_all_to_all(
         self,
@@ -719,7 +727,7 @@ class GraphParser:
         rights: List[str],
         info: List[Tuple[str, str, str, bool]],
         family_trig_map: Dict[Tuple[str, str], Tuple[str, bool]]
-    ) -> None:
+    ):
         """Replace all family names with member names, for all/any semantics.
 
         Args:
@@ -755,7 +763,7 @@ class GraphParser:
             else:
                 n_info += [(name, offset, trig)]
 
-        self._compute_triggers(expr, rights, n_expr, n_info)
+        return n_expr, n_info
 
     def _set_triggers(
         self,
@@ -1011,29 +1019,15 @@ class GraphParser:
                         self._set_output_opt(
                             mem, output, optional, suicide, fam)
 
-    def _clean_graph(self):
-        # {'a': {'': ([], False)}, 'b': {'a:succeeded': (['a:succeeded'], False)}, 'c': {'a:succeeded': (['a:succeeded'], False), 'b:succeeded': (['b:succeeded'], False)}}
+    def clean_graph(self, abs_triggers, initial_cycle_point):
+        print('%', self.graph_paths)
 
-        paths = {}
-
-        for right, trigger in self.triggers.items():
-            for (lefts, suicide) in trigger.values():
-                for left in lefts:
-                    left_task, left_output = left.split(':')
-                    paths.setdefault(left, set()).add(right)
-
-        print('#', paths)
-        # {'a:succeeded': {'b', 'c'}, 'b:succeeded': {'c'}}
-
-        print(f'{self.task_output_opt=}')
         superflous = set()
-        for upstream, downstreams in paths.items():
+        for (up_task, up_offset, up_output), downstreams in self.graph_paths.items():
             # TODO: check if this is an optional edge
             stack = set(downstreams)
             while stack:
                 downstream = stack.pop()
-
-                # {(name, output): (is-optional, is-opt-default, is-fixed)}
                 required_outputs = [
                     _output
                     for (_task, _output), (is_optional, *_)
@@ -1041,11 +1035,10 @@ class GraphParser:
                     if _task == downstream
                     if not is_optional
                 ]
-                print(f'{downstream=} {required_outputs=}')
                 for output in required_outputs:
-                    _downstreams = paths.get(f'{downstream}:{output}', set())
+                    _downstreams = self.graph_paths.get((downstream, '', output), set())
                     superflous |= {
-                        (upstream, _right)
+                        ((up_task, up_offset, up_output), _right)
                         for _right in (downstreams & _downstreams)
                     }
                     stack |= _downstreams

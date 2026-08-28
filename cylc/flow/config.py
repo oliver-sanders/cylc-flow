@@ -2321,30 +2321,42 @@ class WorkflowConfig:
             elif "$" in section:
                 raise WorkflowConfigError("Final cycle point referenced"
                                           " ($) but not defined.")
+
             # If the section consists of more than one sequence, split it up.
-            new_sections = RE_SEC_MULTI_SEQ.split(section)
-            if len(new_sections) > 1:
-                for new_section in new_sections:
-                    sections.append((new_section.strip(), value))
-            else:
-                sections.append((section, value))
+            for _section in RE_SEC_MULTI_SEQ.split(section):
+                _section = _section.strip()
+
+                # parse the sequence
+                try:
+                    seq = get_sequence(_section, icp, fcp)
+                except (AttributeError, TypeError, ValueError, CylcError) as exc:
+                    if cylc.flow.flags.verbosity > 1:
+                        traceback.print_exc()
+                    msg = 'Cannot process recurrence %s' % _section
+                    msg += ' (initial cycle point=%s)' % icp
+                    msg += ' (final cycle point=%s)' % fcp
+                    if isinstance(exc, CylcError):
+                        msg += ' %s' % exc.args[0]
+                    raise WorkflowConfigError(msg) from None
+                self.sequences.append(seq)
+
+                # is this sequence an absolute point?
+                # (e.g, R1, R1/^, R1/1, R1/2000, etc)
+                abs_point = None
+                if seq.get_interval() in {None, get_interval_cls().get_null()}:
+                    abs_point = seq.get_start_point()
+
+                sections.append((abs_point, _section, value, seq))
+
+        # process absolute sections first, in order from oldest to newest
+        sections.sort(key=lambda abs_point, *_: (abs_point is None, abs_point))
 
         # Parse and process each graph section.
         task_triggers = {}
         task_output_opt = {}
-        for section, graph in sections:
-            try:
-                seq = get_sequence(section, icp, fcp)
-            except (AttributeError, TypeError, ValueError, CylcError) as exc:
-                if cylc.flow.flags.verbosity > 1:
-                    traceback.print_exc()
-                msg = 'Cannot process recurrence %s' % section
-                msg += ' (initial cycle point=%s)' % icp
-                msg += ' (final cycle point=%s)' % fcp
-                if isinstance(exc, CylcError):
-                    msg += ' %s' % exc.args[0]
-                raise WorkflowConfigError(msg) from None
-            self.sequences.append(seq)
+        abs_triggers = {}
+        for abs_point, section, graph, seq in sections:
+            print(f'Now serving: {section}')
             parser = GraphParser(
                 family_map,
                 self.parameters,
@@ -2352,6 +2364,9 @@ class WorkflowConfig:
                 expire_triggers=self.experimental.expire_triggers,
             )
             parser.parse_graph(graph)
+            if abs_point is not None:
+                abs_triggers.setdefault(abs_point, []).append(parser.triggers)
+            parser.clean_graph(abs_triggers, self.initial_point)
             task_output_opt.update(parser.task_output_opt)
             self.workflow_polling_tasks.update(
                 parser.workflow_state_polling_tasks)
