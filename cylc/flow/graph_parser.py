@@ -1017,7 +1017,6 @@ class GraphParser:
         paths = {}
 
         for right, trigger in self.triggers.items():
-            print('%', trigger)
             for (lefts, suicide) in trigger.values():
                 for left in lefts:
                     left_task, left_output = left.split(':')
@@ -1026,17 +1025,30 @@ class GraphParser:
         print('#', paths)
         # {'a:succeeded': {'b', 'c'}, 'b:succeeded': {'c'}}
 
+        print(f'{self.task_output_opt=}')
         superflous = set()
         for upstream, downstreams in paths.items():
+            # TODO: check if this is an optional edge
             stack = set(downstreams)
             while stack:
                 downstream = stack.pop()
-                _downstreams = paths.get(f'{downstream}:succeeded', set())
-                superflous |= {
-                    (upstream, _right)
-                    for _right in (downstreams & _downstreams)
-                }
-                stack |= _downstreams
+
+                # {(name, output): (is-optional, is-opt-default, is-fixed)}
+                required_outputs = [
+                    _output
+                    for (_task, _output), (is_optional, *_)
+                    in self.task_output_opt.items()
+                    if _task == downstream
+                    if not is_optional
+                ]
+                print(f'{downstream=} {required_outputs=}')
+                for output in required_outputs:
+                    _downstreams = paths.get(f'{downstream}:{output}', set())
+                    superflous |= {
+                        (upstream, _right)
+                        for _right in (downstreams & _downstreams)
+                    }
+                    stack |= _downstreams
 
         for edge in superflous:
             print('$', edge)
