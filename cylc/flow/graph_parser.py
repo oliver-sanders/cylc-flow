@@ -535,6 +535,8 @@ class GraphParser:
                     f'{left} => {right}'
                 )
 
+        self._clean_graph()
+
     @classmethod
     def _report_invalid_lines(cls, lines: List[str]) -> None:
         """Raise GraphParseError in a consistent format when there are
@@ -1008,3 +1010,33 @@ class GraphParser:
                         # Infer optionality for explicit outputs on RHS.
                         self._set_output_opt(
                             mem, output, optional, suicide, fam)
+
+    def _clean_graph(self):
+        # {'a': {'': ([], False)}, 'b': {'a:succeeded': (['a:succeeded'], False)}, 'c': {'a:succeeded': (['a:succeeded'], False), 'b:succeeded': (['b:succeeded'], False)}}
+
+        paths = {}
+
+        for right, trigger in self.triggers.items():
+            print('%', trigger)
+            for (lefts, suicide) in trigger.values():
+                for left in lefts:
+                    left_task, left_output = left.split(':')
+                    paths.setdefault(left, set()).add(right)
+
+        print('#', paths)
+        # {'a:succeeded': {'b', 'c'}, 'b:succeeded': {'c'}}
+
+        superflous = set()
+        for upstream, downstreams in paths.items():
+            stack = set(downstreams)
+            while stack:
+                downstream = stack.pop()
+                _downstreams = paths.get(f'{downstream}:succeeded', set())
+                superflous |= {
+                    (upstream, _right)
+                    for _right in (downstreams & _downstreams)
+                }
+                stack |= _downstreams
+
+        for edge in superflous:
+            print('$', edge)
