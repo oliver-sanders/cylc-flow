@@ -16,6 +16,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """Module for parsing cylc graph strings."""
 
+from copy import deepcopy
 import re
 import contextlib
 
@@ -1027,35 +1028,26 @@ class GraphParser:
                             mem, output, optional, suicide, fam)
 
     def clean_graph(self, abs_triggers):
-        print('%', self.graph_paths)
+        graph_paths = deepcopy(self.graph_paths)
 
-        graph_paths = {
-            **self.graph_paths,
-        }
-
-        for offset in {offset for _, offset, _ in graph_paths if offset}:
-            # offset = self.get_offset(offset)
+        for offset in {offset for _, offset, _ in dict(graph_paths) if offset}:
             for subgraph in abs_triggers.get(offset, []):
-                # graph_paths.update({
-                #     (up_task, up_offset or offset, up_output): {
-                #         (dn_task, offset)
-                #         for dn_task, _ in downstreams
-                #     }
-                #     for (up_task, up_offset, up_output), downstreams in subgraph.items()
-                # })
                 for upstream, downstreams in {
                     (up_task, up_offset or offset, up_output): {
-                        (dn_task, offset)
-                        for dn_task, _ in downstreams
+                        (dn_task, offset) for dn_task, _ in downstreams
                     }
-                    for (up_task, up_offset, up_output), downstreams in subgraph.items()
+                    for (
+                        (up_task, up_offset, up_output),
+                        downstreams,
+                    ) in subgraph.items()
                 }.items():
                     graph_paths.setdefault(upstream, set()).update(downstreams)
 
-        print('%', graph_paths)
-
         superflous = set()
-        for (up_task, up_offset, up_output), downstreams in graph_paths.items():
+        for (
+            (up_task, up_offset, up_output),
+            downstreams,
+        ) in graph_paths.items():
             # TODO: check if this is an optional edge
             stack = set(downstreams)
             while stack:
@@ -1077,8 +1069,14 @@ class GraphParser:
                     }
                     stack |= _downstreams
 
-        for edge in superflous:
-            print('$', edge)
+        if superflous:
+            print(
+                'Found superflous edges:\n  * '
+                + '\n  * '.join(
+                    f'{up_task}[{up_offset}]:{up_output} => {dn_task}'
+                    for (up_task, up_offset, up_output), (dn_task, _) in superflous
+                )
+            )
 
 
     def get_offset(self, offset_str):

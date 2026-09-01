@@ -2356,7 +2356,6 @@ class WorkflowConfig:
         task_output_opt = {}
         abs_triggers = {}
         for abs_point, section, graph, seq in sections:
-            print(f'Now serving: {section}')
             parser = GraphParser(
                 family_map,
                 self.parameters,
