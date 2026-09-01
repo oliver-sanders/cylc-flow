@@ -2365,7 +2365,7 @@ class WorkflowConfig:
             )
             parser.parse_graph(graph)
             if abs_point is not None:
-                abs_triggers.setdefault(abs_point, []).append(parser.triggers)
+                abs_triggers.setdefault(abs_point, []).append(parser.graph_paths)
             parser.clean_graph(abs_triggers, self.initial_point)
             task_output_opt.update(parser.task_output_opt)
             self.workflow_polling_tasks.update(
