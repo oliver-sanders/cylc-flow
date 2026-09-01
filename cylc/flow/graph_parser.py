@@ -303,6 +303,7 @@ class GraphParser:
         task_output_opt:
             Optional[Dict[Tuple[str, str], Tuple[bool, bool, bool]]] = None,
         expire_triggers: bool = False,
+        initial_cycle_point = None,
     ) -> None:
         """Initialize the graph string parser.
 
@@ -323,6 +324,7 @@ class GraphParser:
         self.original: Dict = {}
         self.workflow_state_polling_tasks: Dict = {}
         self.expire_triggers = expire_triggers
+        self.initial_cycle_point = initial_cycle_point
         self.end_of_chain_nodes: set[str] = set()
 
         # Record task outputs as optional or required:
@@ -524,9 +526,14 @@ class GraphParser:
         rights: Set[str] = set()
 
         for pair in sorted(pairs, key=lambda p: str(p[0])):
-            info, _rights = self._proc_dep_pair(pair, check_terminals, lefts, rights)
-            for item in info:
-                self.graph_paths.setdefault(tuple(item), set()).update(set(_rights))
+            info, _rights = self._proc_dep_pair(
+                pair, check_terminals, lefts, rights
+            )
+            for up_task, up_offset, up_output in info:
+                up_offset = self.get_offset(up_offset)
+                self.graph_paths.setdefault(
+                    (up_task, up_offset, up_output), set()
+                ).update({(_right, '') for _right in _rights})
 
         self.terminals = rights.difference(lefts)
         for right in self.terminals:
@@ -1019,24 +1026,51 @@ class GraphParser:
                         self._set_output_opt(
                             mem, output, optional, suicide, fam)
 
-    def clean_graph(self, abs_triggers, initial_cycle_point):
+    def clean_graph(self, abs_triggers):
         print('%', self.graph_paths)
 
+        graph_paths = {
+            **self.graph_paths,
+        }
+
+        for offset in {offset for _, offset, _ in graph_paths if offset}:
+            # offset = self.get_offset(offset)
+            for subgraph in abs_triggers.get(offset, []):
+                # graph_paths.update({
+                #     (up_task, up_offset or offset, up_output): {
+                #         (dn_task, offset)
+                #         for dn_task, _ in downstreams
+                #     }
+                #     for (up_task, up_offset, up_output), downstreams in subgraph.items()
+                # })
+                for upstream, downstreams in {
+                    (up_task, up_offset or offset, up_output): {
+                        (dn_task, offset)
+                        for dn_task, _ in downstreams
+                    }
+                    for (up_task, up_offset, up_output), downstreams in subgraph.items()
+                }.items():
+                    graph_paths.setdefault(upstream, set()).update(downstreams)
+
+        print('%', graph_paths)
+
         superflous = set()
-        for (up_task, up_offset, up_output), downstreams in self.graph_paths.items():
+        for (up_task, up_offset, up_output), downstreams in graph_paths.items():
             # TODO: check if this is an optional edge
             stack = set(downstreams)
             while stack:
-                downstream = stack.pop()
+                dn_task, dn_offset = stack.pop()
                 required_outputs = [
                     _output
                     for (_task, _output), (is_optional, *_)
                     in self.task_output_opt.items()
-                    if _task == downstream
+                    if _task == dn_task
                     if not is_optional
                 ]
                 for output in required_outputs:
-                    _downstreams = self.graph_paths.get((downstream, '', output), set())
+                    _downstreams = graph_paths.get(
+                        (dn_task, dn_offset, output), set()
+                    )
                     superflous |= {
                         ((up_task, up_offset, up_output), _right)
                         for _right in (downstreams & _downstreams)
@@ -1045,3 +1079,12 @@ class GraphParser:
 
         for edge in superflous:
             print('$', edge)
+
+
+    def get_offset(self, offset_str):
+        if not offset_str:
+            return ''
+        if offset_str == '[^]':
+            return self.initial_cycle_point
+        else:
+            raise ValueError(offset_str)

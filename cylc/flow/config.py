@@ -2362,11 +2362,12 @@ class WorkflowConfig:
                 self.parameters,
                 task_output_opt=task_output_opt,
                 expire_triggers=self.experimental.expire_triggers,
+                initial_cycle_point=self.initial_point,
             )
             parser.parse_graph(graph)
             if abs_point is not None:
                 abs_triggers.setdefault(abs_point, []).append(parser.graph_paths)
-            parser.clean_graph(abs_triggers, self.initial_point)
+            parser.clean_graph(abs_triggers)
             task_output_opt.update(parser.task_output_opt)
             self.workflow_polling_tasks.update(
                 parser.workflow_state_polling_tasks)
