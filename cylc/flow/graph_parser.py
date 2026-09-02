@@ -532,9 +532,10 @@ class GraphParser:
             )
             for up_task, up_offset, up_output in info:
                 up_offset = self.get_offset(up_offset)
-                self.graph_paths.setdefault(
-                    (up_task, up_offset, up_output), set()
-                ).update({(_right, '') for _right in _rights})
+                if up_offset is not None:
+                    self.graph_paths.setdefault(
+                        (up_task, up_offset, up_output), set()
+                    ).update({(_right, '') for _right in _rights})
 
         self.terminals = rights.difference(lefts)
         for right in self.terminals:
@@ -1078,11 +1079,14 @@ class GraphParser:
                 )
             )
 
-
     def get_offset(self, offset_str):
         if not offset_str:
             return ''
         if offset_str == '[^]':
+            # TODO: handle all!
             return self.initial_cycle_point
+        if offset_str.startswith('[-'):
+            # TODO: this is a proxy for detecting relative inter-cycles
+            return None
         else:
             raise ValueError(offset_str)
