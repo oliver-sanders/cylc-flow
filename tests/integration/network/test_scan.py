@@ -82,7 +82,7 @@ def init_flows(tmp_run_path=None, running=None, registered=None,
         make_src(name)
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope='module')
 def sample_run_dir():
     tmp_path = Path(TemporaryDirectory().name)
     tmp_path.mkdir()
@@ -112,7 +112,7 @@ def badly_messed_up_cylc_run_dir(
     return tmp_path
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope='module')
 def run_dir_with_symlinks():
     tmp_path = Path(TemporaryDirectory().name)
     tmp_path.mkdir()
@@ -134,7 +134,7 @@ def run_dir_with_symlinks():
     rmtree(tmp_path)
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope='module')
 def run_dir_with_nasty_symlinks():
     tmp_path = Path(TemporaryDirectory().name)
     tmp_path.mkdir()
@@ -149,7 +149,7 @@ def run_dir_with_nasty_symlinks():
     rmtree(tmp_path)
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope='module')
 def nested_dir():
     tmp_path = Path(TemporaryDirectory().name)
     tmp_path.mkdir()
