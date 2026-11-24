@@ -514,6 +514,11 @@ async def test_reload_unstall(flow, scheduler, run, complete):
         ]
         schd.run_event_handlers.reset_mock()
 
+        # another command e.g. hold should not re-run stalled event handler
+        await commands.run_cmd(commands.hold(schd, ['1/c']))
+        assert schd.is_stalled
+        assert schd.run_event_handlers.call_args_list == []
+
         # remove the failed task and reload
         conf['scheduling']['graph']['R1'] = 'a'
         flow(conf, workflow_id=id_)
